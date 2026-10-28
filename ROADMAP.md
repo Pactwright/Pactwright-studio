@@ -7,7 +7,7 @@
 | | |
 |---|---|
 | Last updated | 2026-10-28 |
-| Progress | **0 / 19 tasks (0%)** |
+| Progress | **2 / 19 tasks (11%)** |
 
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (ADR) · owner `core`/`wave` · size `T`/`M`/`H`.
 
@@ -15,7 +15,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (ADR) · 
 
 | Section | Tasks | Done | % |
 |---|---|---|---|
-| Foundations (this repo) | 6 | 0 | 0% |
+| Foundations (this repo) | 6 | 2 | 33% |
 | Phase 5 — Studio MVP | 10 | 0 | 0% |
 | Phase 7 — v1 | 2 | 0 | 0% |
 | Phase 9 — v2 | 1 | 0 | 0% |
@@ -24,8 +24,8 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (ADR) · 
 
 Repo-level setup tasks.
 
-- [~] **F-02** Create the 3 repos with licenses (contracts MIT, kit Apache-2.0, studio MIT), README skeleton, `NOTICE` crediting all 7 projects — core · T · F-01 · project_structure §6
-- [~] **F-03** Add `ROADMAP.md`, `AGENTS.md`, `CONTRIBUTING.md` (with the roadmap rule) and copies of the 4 design docs to each repo — core · T · F-02 · Done when: every repo states the roadmap rule.
+- [x] **F-02** Create the 3 repos with licenses (contracts MIT, kit Apache-2.0, studio MIT), README skeleton, `NOTICE` crediting all 7 projects — core · T · F-01 · project_structure §6 (pushed, 2026-10-28)
+- [x] **F-03** Add `ROADMAP.md`, `AGENTS.md`, `CONTRIBUTING.md` (with the roadmap rule) and copies of the 4 design docs to each repo — core · T · F-02 · Done when: every repo states the roadmap rule. (pushed, 2026-10-28)
 - [~] **F-04** Labels (`Stellar Wave`, `complexity:*`, `area:*`, `good first issue`, `core-team-only`), issue template, PR template with a "ROADMAP.md updated" checkbox — core · T · F-02 · project_structure §7
 - [~] **F-05** `roadmap-check` CI workflow in all 3 repos: fails a PR that doesn't modify `ROADMAP.md` — core · M · F-02 · Done when: a PR without a roadmap change fails CI.
 - [~] **F-06** `CODEOWNERS` for core-team-only paths — core · T · F-02 · project_structure §7
@@ -63,5 +63,6 @@ Dashboards.
 
 | Date | PR / change | Tasks | Summary |
 |---|---|---|---|
+| 2026-10-28 | initial push | F-02, F-03 → `[x]` | Repo published to github.com/Pactwright with licenses, NOTICE, README, CONTRIBUTING, AGENTS.md and design docs. |
 | 2026-10-28 | scaffold | F-02…F-06, S-01 → `[~]` | Next.js app, API routes (501 stubs), indexer/anchorer stubs, row types; `001_core.sql` + `002_accounts.sql` applied cleanly to Postgres. |
 | 2026-10-28 | scaffold | — | Repo scaffolded: structure, data models, stubs |
