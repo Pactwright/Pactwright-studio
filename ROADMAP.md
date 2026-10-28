@@ -30,7 +30,7 @@ Repo-level setup tasks.
 - [~] **F-04** Labels (`Stellar Wave`, `complexity:*`, `area:*`, `good first issue`, `core-team-only`), issue template, PR template with a "ROADMAP.md updated" checkbox — core · T · F-02 · project_structure §7
 - [~] **F-05** `roadmap-check` CI workflow in all 3 repos: fails a PR that doesn't modify `ROADMAP.md` — core · M · F-02 · Done when: a PR without a roadmap change fails CI.
 - [~] **F-06** `CODEOWNERS` for core-team-only paths — core · T · F-02 · project_structure §7
-- [ ] **F-07** OpenSSF Scorecard, Dependabot, branch protection (CI + review required) — core · T · F-02
+- [~] **F-07** OpenSSF Scorecard, Dependabot, branch protection (CI + review required) — core · T · F-02
 
 ## Phase 5 — Studio MVP
 
@@ -66,6 +66,7 @@ Dashboards.
 
 | Date | PR / change | Tasks | Summary |
 |---|---|---|---|
+| 2026-10-28 | scorecard + teams | F-06, F-07 → `[~]` | OpenSSF Scorecard workflow and badge; CODEOWNERS uses `@Pactwright/maintainers` / `@Pactwright/core`; branch-protection and Dependabot policy in CONTRIBUTING. Done once all three repos merge and protection is on (Pactwright-contracts#58). |
 | 2026-10-28 | #20 | P7-10, P7-11, P9-05 | Implement merchant dashboard (revenue, dispute/refund rates, route breakdown), principal view (budgets & live pacts), and Pollar Studio storefront template. |
 | 2026-10-28 | #19 | S-02, S-03, S-04, XC-03 | Implement getEvents indexer with cursor & idempotent persistence, history backfill & lag alert, anchorer with sorted-pair Merkle proofs & crash recovery, and ops health monitoring probes. |
 | 2026-10-28 | #18 | S-01, S-05, S-06, S-07, S-08 | Implement migrations workflow and seed runner, API routes for pacts and certificates, public timeline page, certificate viewer with offline Merkle verification, and multi-network explorer links. |

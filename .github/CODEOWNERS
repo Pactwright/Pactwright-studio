@@ -1,3 +1,4 @@
-*                          @mallison031
-/apps/web/lib/anchorer/     @mallison031
-/migrations/                @mallison031
+# Owners (ROADMAP F-06). Core-team-only paths are never labelled `Stellar Wave`.
+*                           @Pactwright/maintainers
+/apps/web/lib/anchorer/     @Pactwright/core
+/migrations/                @Pactwright/core
