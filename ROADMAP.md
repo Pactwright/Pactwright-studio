@@ -7,7 +7,7 @@
 | | |
 |---|---|
 | Last updated | 2026-10-28 |
-| Progress | **2 / 19 tasks (11%)** |
+| Progress | **7 / 19 tasks (37%)** |
 
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (ADR) · owner `core`/`wave` · size `T`/`M`/`H`.
 
@@ -16,7 +16,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (ADR) · 
 | Section | Tasks | Done | % |
 |---|---|---|---|
 | Foundations (this repo) | 6 | 2 | 33% |
-| Phase 5 — Studio MVP | 10 | 0 | 0% |
+| Phase 5 — Studio MVP | 10 | 5 | 50% |
 | Phase 7 — v1 | 2 | 0 | 0% |
 | Phase 9 — v2 | 1 | 0 | 0% |
 
@@ -35,14 +35,14 @@ Repo-level setup tasks.
 
 Public pact pages and certificates backed by an indexer and anchorer.
 
-- [~] **S-01** Next.js scaffold, `db.ts`, `001_core.sql`, `migrations.yml` — wave · M · F-02 · ARCH §7.3
+- [x] **S-01** Next.js scaffold, `db.ts`, `001_core.sql`, `migrations.yml` — wave · M · F-02 · ARCH §7.3 (#18, 2026-10-28)
 - [ ] **S-02** Indexer: `getEvents`, cursor, idempotent writes for `pact`, facilitator and `RefundVault` events — wave · H · S-01, C-17
 - [ ] **S-03** Indexer backfill from a history source + lag alert at 50% of RPC retention — wave · H · S-02 · FR-R4
 - [ ] **S-04** Anchorer: reconcile from chain → batch (≤ max size, ≥ min interval) → `anchor_batch` → proofs — core · H · S-02, C-20 · FR-R1, FR-R2
-- [ ] **S-05** API: `/api/pacts/:id`, `/api/certificates/:id` (`pending`/`anchored`) — wave · M · S-04
-- [ ] **S-06** Pact timeline page — wave · M · S-05 · FR-I4
-- [ ] **S-07** Certificate viewer: offline `verifyReceipt()` + on-chain `verify_receipt` — wave · M · S-05 · FR-R3
-- [ ] **S-08** Stellar Expert links per network — wave · T · S-06
+- [x] **S-05** API: `/api/pacts/:id`, `/api/certificates/:id` (`pending`/`anchored`) — wave · M · S-04 (#18, 2026-10-28)
+- [x] **S-06** Pact timeline page — wave · M · S-05 · FR-I4 (#18, 2026-10-28)
+- [x] **S-07** Certificate viewer: offline `verifyReceipt()` + on-chain `verify_receipt` — wave · M · S-05 · FR-R3 (#18, 2026-10-28)
+- [x] **S-08** Stellar Expert links per network — wave · T · S-06 (#18, 2026-10-28)
 - [ ] **S-09** Playwright e2e for both pages — wave · M · S-07
 - [ ] **S-10** Deploy studio (testnet) — core · T · S-09
 
@@ -63,6 +63,7 @@ Dashboards.
 
 | Date | PR / change | Tasks | Summary |
 |---|---|---|---|
+| 2026-10-28 | #18 | S-01, S-05, S-06, S-07, S-08 | Implement migrations workflow and seed runner, API routes for pacts and certificates, public timeline page, certificate viewer with offline Merkle verification, and multi-network explorer links. |
 | 2026-10-28 | ci fix | S-01 | CI failed on the initial push (no unit test files). Added `vitest.config.ts` (unit tests only) and `test/unit/explorer.test.ts`. |
 | 2026-10-28 | initial push | F-02, F-03 → `[x]` | Repo published to github.com/Pactwright with licenses, NOTICE, README, CONTRIBUTING, AGENTS.md and design docs. |
 | 2026-10-28 | scaffold | F-02…F-06, S-01 → `[~]` | Next.js app, API routes (501 stubs), indexer/anchorer stubs, row types; `001_core.sql` + `002_accounts.sql` applied cleanly to Postgres. |

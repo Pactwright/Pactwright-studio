@@ -11,11 +11,44 @@
 - `migrations/` — Postgres schema (`001_core.sql` MVP, `002_accounts.sql` v1)
 
 ## Quickstart
-```bash
-pnpm install
-psql "$DATABASE_URL" -f migrations/001_core.sql
-pnpm dev
-```
+
+### Prerequisites
+- Node.js >= 24
+- pnpm >= 10
+- PostgreSQL database
+
+### Local Setup
+1. Clone the repository and install dependencies:
+   ```bash
+   pnpm install
+   ```
+
+2. Configure environment variables in `.env`:
+   ```bash
+   cp .env.example .env
+   # Ensure DATABASE_URL is set (e.g. postgres://localhost:5432/pactwright)
+   ```
+
+3. Run migrations to create database schema:
+   ```bash
+   pnpm db:migrate
+   ```
+
+4. Populate fixtures and seed data for local testing:
+   ```bash
+   pnpm db:seed
+   ```
+
+5. Start the Next.js development server:
+   ```bash
+   pnpm dev
+   ```
+
+6. Run unit tests and type checks:
+   ```bash
+   pnpm typecheck
+   pnpm test
+   ```
 
 ## Contributing
 Read [`CONTRIBUTING.md`](CONTRIBUTING.md). **Every PR updates [`ROADMAP.md`](ROADMAP.md).**
