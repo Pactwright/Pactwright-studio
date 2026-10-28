@@ -2,6 +2,9 @@
 
 **Pact pages, certificates, indexer and anchorer for Pactwright.**
 
+[![ci](https://github.com/Pactwright/Pactwright-studio/actions/workflows/ci.yml/badge.svg)](https://github.com/Pactwright/Pactwright-studio/actions/workflows/ci.yml)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/Pactwright/Pactwright-studio/badge)](https://scorecard.dev/viewer/?uri=github.com/Pactwright/Pactwright-studio)
+
 > Status: scaffold. See [`ROADMAP.md`](ROADMAP.md).
 
 - `apps/web/app/pact/[id]` — public pact timeline

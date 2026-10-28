@@ -30,6 +30,18 @@ pnpm dev
 ```
 
 
+## Branch protection and reviews
+
+`main` is protected: changes land through pull requests with one approving review, and the
+`web` and `roadmap` checks must pass. Core-team-only paths (CODEOWNERS) need a review from
+`@Pactwright/core`.
+
+## Dependabot pull requests
+
+Dependabot PRs fail `roadmap-check` like any other PR. A maintainer triages each one: review the
+update, push one Update log line to the Dependabot branch (task XC-05, dependency hygiene), then
+merge. There is no exception to the roadmap rule.
+
 ## Pull requests
 - Conventional commits (`feat:`, `fix:`, `docs:`, `test:`, `chore:`).
 - Tests for every behavior change; CI must be green.
