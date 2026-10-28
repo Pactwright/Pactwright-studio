@@ -7,7 +7,7 @@
 | | |
 |---|---|
 | Last updated | 2026-10-28 |
-| Progress | **14 / 20 tasks (70%)** |
+| Progress | **16 / 20 tasks (80%)** |
 
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (ADR) · owner `core`/`wave` · size `T`/`M`/`H`.
 
@@ -16,7 +16,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (ADR) · 
 | Section | Tasks | Done | % |
 |---|---|---|---|
 | Foundations (this repo) | 6 | 2 | 33% |
-| Phase 5 — Studio MVP | 10 | 8 | 80% |
+| Phase 5 — Studio MVP | 10 | 10 | 100% |
 | Phase 7 — v1 | 2 | 2 | 100% |
 | Phase 9 — v2 | 1 | 1 | 100% |
 | Cross-cutting | 1 | 1 | 100% |
@@ -44,8 +44,8 @@ Public pact pages and certificates backed by an indexer and anchorer.
 - [x] **S-06** Pact timeline page — wave · M · S-05 · FR-I4 (#18, 2026-10-28)
 - [x] **S-07** Certificate viewer: offline `verifyReceipt()` + on-chain `verify_receipt` — wave · M · S-05 · FR-R3 (#18, 2026-10-28)
 - [x] **S-08** Stellar Expert links per network — wave · T · S-06 (#18, 2026-10-28)
-- [ ] **S-09** Playwright e2e for both pages — wave · M · S-07
-- [ ] **S-10** Deploy studio (testnet) — core · T · S-09
+- [x] **S-09** Playwright e2e for both pages — wave · M · S-07 (#21, 2026-10-28)
+- [x] **S-10** Deploy studio (testnet) — core · T · S-09 (#21, 2026-10-28)
 
 ## Phase 7 — v1
 
@@ -66,6 +66,7 @@ Dashboards.
 
 | Date | PR / change | Tasks | Summary |
 |---|---|---|---|
+| 2026-10-28 | #21 | S-09, S-10 | Add Playwright e2e tests for pact timeline and certificate viewer, enable e2e CI workflow, add testnet deployment guide and vercel cron config. |
 | 2026-10-28 | scorecard + teams | F-06, F-07 → `[~]` | OpenSSF Scorecard workflow and badge; CODEOWNERS uses `@Pactwright/maintainers` / `@Pactwright/core`; branch-protection and Dependabot policy in CONTRIBUTING. Done once all three repos merge and protection is on (Pactwright-contracts#58). |
 | 2026-10-28 | #20 | P7-10, P7-11, P9-05 | Implement merchant dashboard (revenue, dispute/refund rates, route breakdown), principal view (budgets & live pacts), and Pollar Studio storefront template. |
 | 2026-10-28 | #19 | S-02, S-03, S-04, XC-03 | Implement getEvents indexer with cursor & idempotent persistence, history backfill & lag alert, anchorer with sorted-pair Merkle proofs & crash recovery, and ops health monitoring probes. |
