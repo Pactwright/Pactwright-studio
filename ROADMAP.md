@@ -7,7 +7,7 @@
 | | |
 |---|---|
 | Last updated | 2026-10-28 |
-| Progress | **11 / 20 tasks (55%)** |
+| Progress | **14 / 20 tasks (70%)** |
 
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (ADR) · owner `core`/`wave` · size `T`/`M`/`H`.
 
@@ -17,8 +17,8 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (ADR) · 
 |---|---|---|---|
 | Foundations (this repo) | 6 | 2 | 33% |
 | Phase 5 — Studio MVP | 10 | 8 | 80% |
-| Phase 7 — v1 | 2 | 0 | 0% |
-| Phase 9 — v2 | 1 | 0 | 0% |
+| Phase 7 — v1 | 2 | 2 | 100% |
+| Phase 9 — v2 | 1 | 1 | 100% |
 | Cross-cutting | 1 | 1 | 100% |
 
 ## Foundations (this repo)
@@ -51,12 +51,12 @@ Public pact pages and certificates backed by an indexer and anchorer.
 
 Dashboards.
 
-- [ ] **P7-10** `002_accounts.sql` + merchant dashboard (revenue, refund/dispute rate, cost per route from `budget-report`) — wave · H · S-05 · FR-I5
-- [ ] **P7-11** Principal view (budgets, live pacts) — wave · H · P7-10
+- [x] **P7-10** `002_accounts.sql` + merchant dashboard (revenue, refund/dispute rate, cost per route from `budget-report`) — wave · H · S-05 · FR-I5 (#20, 2026-10-28)
+- [x] **P7-11** Principal view (budgets, live pacts) — wave · H · P7-10 (#20, 2026-10-28)
 
 ## Phase 9 — v2
 
-- [ ] **P9-05** Pollar Studio storefront template (partnership, SDK only) — core · H · F-09 · FR-X4
+- [x] **P9-05** Pollar Studio storefront template (partnership, SDK only) — core · H · F-09 · FR-X4 (#20, 2026-10-28)
 
 ## Cross-cutting
 
@@ -66,6 +66,7 @@ Dashboards.
 
 | Date | PR / change | Tasks | Summary |
 |---|---|---|---|
+| 2026-10-28 | #20 | P7-10, P7-11, P9-05 | Implement merchant dashboard (revenue, dispute/refund rates, route breakdown), principal view (budgets & live pacts), and Pollar Studio storefront template. |
 | 2026-10-28 | #19 | S-02, S-03, S-04, XC-03 | Implement getEvents indexer with cursor & idempotent persistence, history backfill & lag alert, anchorer with sorted-pair Merkle proofs & crash recovery, and ops health monitoring probes. |
 | 2026-10-28 | #18 | S-01, S-05, S-06, S-07, S-08 | Implement migrations workflow and seed runner, API routes for pacts and certificates, public timeline page, certificate viewer with offline Merkle verification, and multi-network explorer links. |
 | 2026-10-28 | ci fix | S-01 | CI failed on the initial push (no unit test files). Added `vitest.config.ts` (unit tests only) and `test/unit/explorer.test.ts`. |
