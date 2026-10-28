@@ -1,0 +1,44 @@
+name: Task
+description: A unit of work from ROADMAP.md
+labels: []
+body:
+  - type: input
+    id: task
+    attributes:
+      label: Roadmap task ID
+      description: The ID from ROADMAP.md (e.g. C-09). Add a new task to ROADMAP.md first if none fits.
+      placeholder: C-09
+    validations:
+      required: true
+  - type: dropdown
+    id: complexity
+    attributes:
+      label: Complexity
+      options:
+        - "trivial (100 pts)"
+        - "medium (150 pts)"
+        - "high (200 pts)"
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Why this is needed, with links to PRD / ARCHITECTURE sections.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Checkable conditions for "done".
+    validations:
+      required: true
+  - type: textarea
+    id: files
+    attributes:
+      label: Files involved
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: Out of scope

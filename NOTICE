@@ -1,0 +1,33 @@
+Pactwright
+Copyright 2026 Pactwright contributors
+
+Pactwright builds on ideas, formats and code from the following projects.
+Each is credited here whether we use its code, its format or only its idea.
+
+Accensa (MIT / Apache-2.0)
+  https://github.com/accensa/accensa-contracts  - RefundVault, ReceiptAnchor (pinned WASM)
+  https://github.com/accensa/x402-facilitator-stellar - x402 facilitator, `pact` scheme
+  https://github.com/accensa/accensa-app - @accensa/sdk, indexer patterns
+
+Tollcraft (Apache-2.0 / MIT)
+  https://github.com/Tollcraft/soroban-cost-linter - cost lint in CI
+  https://github.com/Tollcraft/soroban-budget-assert - budget assertions, budget-report
+
+Witness (Apache-2.0)
+  https://github.com/fabian416/witness - verdict-v1 envelope format, condition hashing,
+  "model reads, code decides" pattern; @witness/core vendored in pactwright-kit
+
+Ficha (MIT)
+  https://github.com/beto-rocha-blockchain/ficha-stellar - the idea of refunding unused
+  units of a metered service (re-implemented as signed usage vouchers; no code copied)
+
+Vespi (Apache-2.0)
+  https://github.com/andresanemic/vespi - human approval of agent spending (budget gate)
+
+BookerBob (MIT)
+  https://github.com/hustle1hustle/bookerbob-hackmeridian-2026 - proven-customer reputation
+
+Pollar
+  https://docs.pollar.xyz - seedless wallets via the public Pollar SDK only.
+  Pollar Studio has no license file; no Pollar Studio code is used. Integration is by
+  partnership only (ROADMAP F-09).

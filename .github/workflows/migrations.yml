@@ -1,0 +1,21 @@
+name: migrations
+on:
+  pull_request:
+    paths: ["migrations/**"]
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: --health-cmd pg_isready --health-interval 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply every migration to an empty database
+        env:
+          PGPASSWORD: postgres
+        run: for f in migrations/*.sql; do psql -h localhost -U postgres -v ON_ERROR_STOP=1 -f "$f"; done
