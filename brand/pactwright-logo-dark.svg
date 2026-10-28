@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="120" viewBox="0 0 560 120" role="img" aria-label="Pactwright">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2DD4BF"/>
+      <stop offset="1" stop-color="#6366F1"/>
+    </linearGradient>
+  </defs>
+  <!-- seal: two interlocking links closed by a check, a pact that is kept -->
+  <rect x="8" y="12" width="96" height="96" rx="26" fill="url(#g)"/>
+  <rect x="26" y="40" width="40" height="40" rx="12" fill="none" stroke="#0B1220" stroke-width="7" opacity="0.9"/>
+  <rect x="46" y="40" width="40" height="40" rx="12" fill="none" stroke="#F8FAFC" stroke-width="7"/>
+  <path d="M40 61 l10 10 l22 -24" fill="none" stroke="#F8FAFC" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="128" y="68" font-family="Inter, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="52" font-weight="700" letter-spacing="-1" textLength="300" lengthAdjust="spacingAndGlyphs" fill="#F8FAFC">Pactwright</text>
+  <text x="130" y="96" font-family="Inter, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" font-weight="500" letter-spacing="2" textLength="412" lengthAdjust="spacingAndGlyphs" fill="#94A3B8">ACCOUNTABLE AGENT PURCHASES ON STELLAR</text>
+</svg>

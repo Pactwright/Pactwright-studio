@@ -7,7 +7,7 @@
 | | |
 |---|---|
 | Last updated | 2026-10-28 |
-| Progress | **16 / 20 tasks (80%)** |
+| Progress | **18 / 20 tasks (90%)** |
 
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (ADR) · owner `core`/`wave` · size `T`/`M`/`H`.
 
@@ -15,7 +15,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (ADR) · 
 
 | Section | Tasks | Done | % |
 |---|---|---|---|
-| Foundations (this repo) | 6 | 2 | 33% |
+| Foundations (this repo) | 6 | 4 | 67% |
 | Phase 5 — Studio MVP | 10 | 10 | 100% |
 | Phase 7 — v1 | 2 | 2 | 100% |
 | Phase 9 — v2 | 1 | 1 | 100% |
@@ -29,8 +29,8 @@ Repo-level setup tasks.
 - [x] **F-03** Add `ROADMAP.md`, `AGENTS.md`, `CONTRIBUTING.md` (with the roadmap rule) and copies of the 4 design docs to each repo — core · T · F-02 · Done when: every repo states the roadmap rule. (pushed, 2026-10-28)
 - [~] **F-04** Labels (`Stellar Wave`, `complexity:*`, `area:*`, `good first issue`, `core-team-only`), issue template, PR template with a "ROADMAP.md updated" checkbox — core · T · F-02 · project_structure §7
 - [~] **F-05** `roadmap-check` CI workflow in all 3 repos: fails a PR that doesn't modify `ROADMAP.md` — core · M · F-02 · Done when: a PR without a roadmap change fails CI.
-- [~] **F-06** `CODEOWNERS` for core-team-only paths — core · T · F-02 · project_structure §7
-- [~] **F-07** OpenSSF Scorecard, Dependabot, branch protection (CI + review required) — core · T · F-02
+- [x] **F-06** `CODEOWNERS` for core-team-only paths — core · T · F-02 · project_structure §7 (#23, 2026-10-28)
+- [x] **F-07** OpenSSF Scorecard, Dependabot, branch protection (CI + review required) — core · T · F-02 (#23, 2026-10-28)
 
 ## Phase 5 — Studio MVP
 
@@ -66,6 +66,7 @@ Dashboards.
 
 | Date | PR / change | Tasks | Summary |
 |---|---|---|---|
+| 2026-10-28 | #23 | F-06, F-07 → `[x]` | README rewritten to explain Studio: why it exists, who uses it, how a receipt becomes provable (flowchart), an honest status table (RPC `fetchEvents` and on-chain `anchor_batch` are still stubs; not deployed), pages and API, local run, deploy, data model, FAQ, and a full License section. Logo assets added. CODEOWNERS, Scorecard and branch protection are live. |
 | 2026-10-28 | #21 | S-09, S-10 | Add Playwright e2e tests for pact timeline and certificate viewer, enable e2e CI workflow, add testnet deployment guide and vercel cron config. |
 | 2026-10-28 | scorecard + teams | F-06, F-07 → `[~]` | OpenSSF Scorecard workflow and badge; CODEOWNERS uses `@Pactwright/maintainers` / `@Pactwright/core`; branch-protection and Dependabot policy in CONTRIBUTING. Done once all three repos merge and protection is on (Pactwright-contracts#58). |
 | 2026-10-28 | #20 | P7-10, P7-11, P9-05 | Implement merchant dashboard (revenue, dispute/refund rates, route breakdown), principal view (budgets & live pacts), and Pollar Studio storefront template. |
