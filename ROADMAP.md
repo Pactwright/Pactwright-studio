@@ -63,6 +63,7 @@ Dashboards.
 
 | Date | PR / change | Tasks | Summary |
 |---|---|---|---|
+| 2026-10-28 | ci fix | S-01 | CI failed on the initial push (no unit test files). Added `vitest.config.ts` (unit tests only) and `test/unit/explorer.test.ts`. |
 | 2026-10-28 | initial push | F-02, F-03 → `[x]` | Repo published to github.com/Pactwright with licenses, NOTICE, README, CONTRIBUTING, AGENTS.md and design docs. |
 | 2026-10-28 | scaffold | F-02…F-06, S-01 → `[~]` | Next.js app, API routes (501 stubs), indexer/anchorer stubs, row types; `001_core.sql` + `002_accounts.sql` applied cleanly to Postgres. |
 | 2026-10-28 | scaffold | — | Repo scaffolded: structure, data models, stubs |
