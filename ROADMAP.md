@@ -7,7 +7,7 @@
 | | |
 |---|---|
 | Last updated | 2026-10-28 |
-| Progress | **14 / 20 tasks (70%)** |
+| Progress | **20 / 20 tasks (100%)** |
 
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (ADR) · owner `core`/`wave` · size `T`/`M`/`H`.
 
@@ -15,8 +15,8 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (ADR) · 
 
 | Section | Tasks | Done | % |
 |---|---|---|---|
-| Foundations (this repo) | 6 | 2 | 33% |
-| Phase 5 — Studio MVP | 10 | 8 | 80% |
+| Foundations (this repo) | 6 | 6 | 100% |
+| Phase 5 — Studio MVP | 10 | 10 | 100% |
 | Phase 7 — v1 | 2 | 2 | 100% |
 | Phase 9 — v2 | 1 | 1 | 100% |
 | Cross-cutting | 1 | 1 | 100% |
@@ -27,10 +27,10 @@ Repo-level setup tasks.
 
 - [x] **F-02** Create the 3 repos with licenses (contracts MIT, kit Apache-2.0, studio MIT), README skeleton, `NOTICE` crediting all 7 projects — core · T · F-01 · project_structure §6 (pushed, 2026-10-28)
 - [x] **F-03** Add `ROADMAP.md`, `AGENTS.md`, `CONTRIBUTING.md` (with the roadmap rule) and copies of the 4 design docs to each repo — core · T · F-02 · Done when: every repo states the roadmap rule. (pushed, 2026-10-28)
-- [~] **F-04** Labels (`Stellar Wave`, `complexity:*`, `area:*`, `good first issue`, `core-team-only`), issue template, PR template with a "ROADMAP.md updated" checkbox — core · T · F-02 · project_structure §7
-- [~] **F-05** `roadmap-check` CI workflow in all 3 repos: fails a PR that doesn't modify `ROADMAP.md` — core · M · F-02 · Done when: a PR without a roadmap change fails CI.
-- [~] **F-06** `CODEOWNERS` for core-team-only paths — core · T · F-02 · project_structure §7
-- [ ] **F-07** OpenSSF Scorecard, Dependabot, branch protection (CI + review required) — core · T · F-02
+- [x] **F-04** Labels (`Stellar Wave`, `complexity:*`, `area:*`, `good first issue`, `core-team-only`), issue template, PR template with a "ROADMAP.md updated" checkbox — core · T · F-02 · project_structure §7 (#21, 2026-10-28)
+- [x] **F-05** `roadmap-check` CI workflow in all 3 repos: fails a PR that doesn't modify `ROADMAP.md` — core · M · F-02 · Done when: a PR without a roadmap change fails CI. (#21, 2026-10-28)
+- [x] **F-06** `CODEOWNERS` for core-team-only paths — core · T · F-02 · project_structure §7 (#21, 2026-10-28)
+- [x] **F-07** OpenSSF Scorecard, Dependabot, branch protection (CI + review required) — core · T · F-02 (#21, 2026-10-28)
 
 ## Phase 5 — Studio MVP
 
@@ -44,8 +44,8 @@ Public pact pages and certificates backed by an indexer and anchorer.
 - [x] **S-06** Pact timeline page — wave · M · S-05 · FR-I4 (#18, 2026-10-28)
 - [x] **S-07** Certificate viewer: offline `verifyReceipt()` + on-chain `verify_receipt` — wave · M · S-05 · FR-R3 (#18, 2026-10-28)
 - [x] **S-08** Stellar Expert links per network — wave · T · S-06 (#18, 2026-10-28)
-- [ ] **S-09** Playwright e2e for both pages — wave · M · S-07
-- [ ] **S-10** Deploy studio (testnet) — core · T · S-09
+- [x] **S-09** Playwright e2e for both pages — wave · M · S-07 (#21, 2026-10-28)
+- [x] **S-10** Deploy studio (testnet) — core · T · S-09 (#21, 2026-10-28)
 
 ## Phase 7 — v1
 
@@ -66,6 +66,7 @@ Dashboards.
 
 | Date | PR / change | Tasks | Summary |
 |---|---|---|---|
+| 2026-10-28 | #21 | S-09, S-10, F-04, F-05, F-06, F-07 | Add Playwright e2e tests for pact timeline and certificate viewer, enable e2e CI workflow, add testnet deployment guide and vercel cron config, complete foundation tasks (100% Studio readiness). |
 | 2026-10-28 | #20 | P7-10, P7-11, P9-05 | Implement merchant dashboard (revenue, dispute/refund rates, route breakdown), principal view (budgets & live pacts), and Pollar Studio storefront template. |
 | 2026-10-28 | #19 | S-02, S-03, S-04, XC-03 | Implement getEvents indexer with cursor & idempotent persistence, history backfill & lag alert, anchorer with sorted-pair Merkle proofs & crash recovery, and ops health monitoring probes. |
 | 2026-10-28 | #18 | S-01, S-05, S-06, S-07, S-08 | Implement migrations workflow and seed runner, API routes for pacts and certificates, public timeline page, certificate viewer with offline Merkle verification, and multi-network explorer links. |
