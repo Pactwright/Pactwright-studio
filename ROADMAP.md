@@ -7,7 +7,7 @@
 | | |
 |---|---|
 | Last updated | 2026-10-29 |
-| Progress | **16 / 20 tasks (80%)** |
+| Progress | **15 / 20 tasks (75%)** |
 
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (ADR) · owner `core`/`wave` · size `T`/`M`/`H`.
 
@@ -16,7 +16,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (ADR) · 
 | Section | Tasks | Done | % |
 |---|---|---|---|
 | Foundations (this repo) | 6 | 4 | 67% |
-| Phase 5 — Studio MVP | 10 | 9 | 90% |
+| Phase 5 — Studio MVP | 10 | 8 | 80% |
 | Phase 7 — v1 | 2 | 2 | 100% |
 | Phase 9 — v2 | 1 | 1 | 100% |
 | Cross-cutting | 1 | 0 | 0% |
@@ -38,14 +38,14 @@ Public pact pages and certificates backed by an indexer and anchorer.
 
 - [x] **S-01** Next.js scaffold, `db.ts`, `001_core.sql`, `migrations.yml` — wave · M · F-02 · ARCH §7.3 (#18, 2026-10-28)
 - [x] **S-02** Indexer: `getEvents`, cursor, idempotent writes for `pact`, facilitator and `RefundVault` events — wave · H · S-01, C-17 (#25, 2026-10-29)
-- [x] **S-03** Indexer backfill from a history source + lag alert at 50% of RPC retention — wave · H · S-02 · FR-R4 (#29, 2026-10-29)
+- [~] **S-03** Indexer backfill from a history source + lag alert at 50% of RPC retention — wave · H · S-02 · FR-R4 — reopened: the HTTP history source decoded JSON events into strings, so the decoders dropped every event while the cursor advanced (fixed in #31, plus an archival-RPC source); done once a gap is actually backfilled from a configured source
 - [x] **S-04** Anchorer: reconcile from chain → batch (≤ max size, ≥ min interval) → `anchor_batch` → proofs — core · H · S-02, C-20 · FR-R1, FR-R2 (#25, 2026-10-29)
 - [x] **S-05** API: `/api/pacts/:id`, `/api/certificates/:id` (`pending`/`anchored`) — wave · M · S-04 (#18, 2026-10-28)
 - [x] **S-06** Pact timeline page — wave · M · S-05 · FR-I4 (#18, 2026-10-28)
 - [x] **S-07** Certificate viewer: offline `verifyReceipt()` + on-chain `verify_receipt` — wave · M · S-05 · FR-R3 (#18, 2026-10-28)
 - [x] **S-08** Stellar Expert links per network — wave · T · S-06 (#18, 2026-10-28)
 - [x] **S-09** Playwright e2e for both pages — wave · M · S-07 (#21, 2026-10-28)
-- [~] **S-10** Deploy studio (testnet) — core · T · S-09 — reopened: deploy config exists, but nothing is deployed (`studio.pactwright.dev` doesn't resolve). `render.yaml` (web, Postgres, sync and anchor crons) is ready; done once the Render deploy is live (#26)
+- [~] **S-10** Deploy studio (testnet) — core · T · S-09 — deployed on Render (`pactwright-studio-testnet.onrender.com`, ops health green), but the cron that calls `/api/sync` and `/api/anchor` has never run: the repo has no `STUDIO_URL` / `CRON_SECRET` secrets, and the hourly anchor wasn't scheduled (fixed in #31)
 
 ## Phase 7 — v1
 
@@ -66,6 +66,7 @@ Dashboards.
 
 | Date | PR / change | Tasks | Summary |
 |---|---|---|---|
+| 2026-10-29 | #31 | S-03 → `[~]` | Crosscheck: the HTTP history source returned JSON, so `pact_id` arrived as text and every backfilled event was dropped while the cursor advanced; it now reads base64-XDR events, requires `scannedThroughLedger`, and an archival-RPC source (`HISTORY_RPC_URL`) is added. `studio-cron` never ran (no secrets) and silently skipped when unconfigured; it now fails loudly and schedules the hourly anchor. |
 | 2026-10-29 | #30 | S-10 stays `[~]` | Adjust Render Blueprint to free tier (`plan: free` for web and Postgres DB) and add GitHub Actions `studio-cron` workflow for 5-min indexer sync and hourly anchor triggers without requiring a credit card. (refs #26) |
 | 2026-10-29 | #29 | S-03 → `[x]` | History-source backfill: fetch historical `pact` and RefundVault events via HistorySource when cursor is behind RPC retention, decode and persist idempotently, advance cursor only through verified scanned ledgers; `syncWithHistory` resumes RPC sync without skipping any events. |
 | 2026-10-29 | Render deploy (#26) | XC-03 → `[~]`; S-10 stays `[~]` | `render.yaml` for testnet on Render: web app (migrations before each deploy), managed Postgres, `/api/sync` every 5 min and `/api/anchor` hourly with a generated `CRON_SECRET`; secrets stay in Render. `/api/ops/health` returned hard-coded numbers; it now measures indexer lag from the slowest cursor, RPC retention and the unanchored-receipt backlog, and runs no probe it can't measure. |

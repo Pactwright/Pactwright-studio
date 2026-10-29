@@ -166,6 +166,46 @@ describe("Indexer backfill & lag alert (ROADMAP S-03)", () => {
     });
   });
 
+  describe("HttpHistorySource", () => {
+    it("decodes base64-XDR events into the bytes the decoders expect", async () => {
+      const { HttpHistorySource } = await import("../../lib/indexer/backfill");
+      const { nativeToScVal, xdr } = await import("@stellar/stellar-sdk");
+      const value = xdr.ScVal.scvMap([
+        new xdr.ScMapEntry({ key: xdr.ScVal.scvSymbol("pact_id"), val: xdr.ScVal.scvBytes(pactIdBytes) }),
+        new xdr.ScMapEntry({ key: xdr.ScVal.scvSymbol("to_buyer"), val: nativeToScVal(10_000_000n, { type: "i128" }) }),
+      ]);
+      const wire = {
+        contractId: "CPACT",
+        ledger: 15000,
+        txHash: "tx",
+        id: "1",
+        topic: [xdr.ScVal.scvSymbol("pact").toXDR("base64"), xdr.ScVal.scvSymbol("released").toXDR("base64")],
+        value: value.toXDR("base64"),
+      };
+      const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        new Response(JSON.stringify({ events: [wire], scannedThroughLedger: 20000 })),
+      );
+      try {
+        const out = await new HttpHistorySource("https://history.example/events").fetchEvents("CPACT", 10000, 20000);
+        expect(out.scannedThroughLedger).toBe(20000);
+        const { decodePactEvent } = await import("../../lib/indexer/sources");
+        expect(decodePactEvent(out.events[0]!)).toMatchObject({ stage: "released", pactId: pactIdHex, toBuyer: "10000000" });
+      } finally {
+        fetchSpy.mockRestore();
+      }
+    });
+
+    it("refuses a response that doesn't say how far it scanned", async () => {
+      const { HttpHistorySource } = await import("../../lib/indexer/backfill");
+      const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ events: [] })));
+      try {
+        await expect(new HttpHistorySource("https://history.example/events").fetchEvents("CPACT", 1, 2)).rejects.toThrow(/scannedThroughLedger/);
+      } finally {
+        fetchSpy.mockRestore();
+      }
+    });
+  });
+
   describe("End-to-end backfill and resume from RPC", () => {
     it("starts with cursor outside retention and ends with every event indexed and none skipped", async () => {
       // 1. Setup: cursor is at 10000, RPC retention window is [50000, 51000].
@@ -228,11 +268,12 @@ describe("Indexer backfill & lag alert (ROADMAP S-03)", () => {
         ),
       ];
 
+      // Like a real source: only the events in the requested range, and how far it scanned.
       const historySource: HistorySource = {
-        fetchEvents: vi.fn().mockResolvedValue({
-          events: historicalEvents,
-          scannedThroughLedger: 50000,
-        }),
+        fetchEvents: vi.fn(async (_c: string, from: number, to: number) => ({
+          events: historicalEvents.filter((e) => e.ledger >= from && e.ledger <= to),
+          scannedThroughLedger: to,
+        })),
       };
 
       // 4. Prepare RPC events in retention window (50000..51000)

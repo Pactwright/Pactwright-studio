@@ -8,7 +8,8 @@
  * data lake), decodes them through the exact same decoders and `persistEvents`, and only
  * advances the cursor up to ledgers actually scanned. Then RPC `sync` can safely resume.
  */
-import { chainConfig, server, type ChainConfig, type RawEvent } from "@/lib/chain";
+import { scValToNative, xdr } from "@stellar/stellar-sdk";
+import { chainConfig, contractEvents, server, type ChainConfig, type RawEvent } from "@/lib/chain";
 import { advance, getCursor } from "@/lib/indexer/cursor";
 import { persistEvents, sync, type SyncResult } from "@/lib/indexer";
 import {
@@ -62,11 +63,41 @@ export interface HistorySource {
     contractId: string,
     fromLedger: number,
     toLedger: number,
-  ): Promise<{ events: RawEvent[]; scannedThroughLedger?: number }>;
+  ): Promise<{ events: RawEvent[]; scannedThroughLedger: number }>;
 }
 
 /**
  * HTTP implementation of HistorySource querying a history endpoint.
+ */
+/** One event as a history source sends it: topics and value as base64 XDR, like RPC `getEvents`. */
+interface WireEvent {
+  contractId: string;
+  ledger: number;
+  txHash: string;
+  id: string;
+  topic: string[];
+  value: string;
+}
+
+/** XDR → the same JS shapes the RPC path produces, so the decoders see bytes, not strings. */
+function fromWire(e: WireEvent): RawEvent {
+  if (!Array.isArray(e.topic) || typeof e.value !== "string") {
+    throw new Error("history event must carry base64-XDR `topic[]` and `value`");
+  }
+  return {
+    contractId: e.contractId,
+    ledger: e.ledger,
+    txHash: e.txHash,
+    id: e.id,
+    topics: e.topic.map((t) => scValToNative(xdr.ScVal.fromXDR(t, "base64"))),
+    value: scValToNative(xdr.ScVal.fromXDR(e.value, "base64")),
+  };
+}
+
+/**
+ * A history service over HTTP (`HISTORY_SOURCE_URL`): GET with `contract_id`, `start_ledger`,
+ * `end_ledger`; returns `{ events: WireEvent[], scannedThroughLedger }`. It must say how far it
+ * scanned: without that, nothing proves the gap was read, so the cursor can't move.
  */
 export class HttpHistorySource implements HistorySource {
   constructor(private readonly baseUrl = process.env.HISTORY_SOURCE_URL) {}
@@ -78,7 +109,7 @@ export class HttpHistorySource implements HistorySource {
   ): Promise<{ events: RawEvent[]; scannedThroughLedger: number }> {
     if (!this.baseUrl) {
       throw new Error(
-        "No history source configured: set HISTORY_SOURCE_URL or pass a custom HistorySource (ROADMAP S-03)",
+        "No history source configured: set HISTORY_RPC_URL or HISTORY_SOURCE_URL (ROADMAP S-03)",
       );
     }
     const url = new URL(this.baseUrl);
@@ -90,12 +121,42 @@ export class HttpHistorySource implements HistorySource {
     if (!res.ok) {
       throw new Error(`History source HTTP ${res.status}: ${await res.text()}`);
     }
-    const data = (await res.json()) as { events?: RawEvent[]; scannedThroughLedger?: number; latestLedger?: number };
+    const data = (await res.json()) as { events?: WireEvent[]; scannedThroughLedger?: number };
+    if (typeof data.scannedThroughLedger !== "number") {
+      throw new Error("History source did not report scannedThroughLedger; refusing to advance the cursor");
+    }
+    return { events: (data.events ?? []).map(fromWire), scannedThroughLedger: data.scannedThroughLedger };
+  }
+}
+
+/**
+ * A Stellar RPC with longer event retention than the main one (`HISTORY_RPC_URL`), such as an
+ * archival provider. Same `getEvents` as the live indexer, so nothing is re-encoded.
+ */
+export class RpcHistorySource implements HistorySource {
+  constructor(private readonly rpcUrl = process.env.HISTORY_RPC_URL) {}
+
+  async fetchEvents(
+    contractId: string,
+    fromLedger: number,
+    toLedger: number,
+  ): Promise<{ events: RawEvent[]; scannedThroughLedger: number }> {
+    if (!this.rpcUrl) throw new Error("HISTORY_RPC_URL is not set");
+    const config = { ...chainConfig(), rpcUrl: this.rpcUrl };
+    const page = await contractEvents(config, contractId, fromLedger);
+    if (fromLedger < page.oldestLedger) {
+      throw new Error(`HISTORY_RPC_URL only keeps events from ledger ${page.oldestLedger}; needed ${fromLedger}`);
+    }
     return {
-      events: data.events ?? [],
-      scannedThroughLedger: data.scannedThroughLedger ?? data.latestLedger ?? toLedger,
+      events: page.events.filter((e) => e.ledger <= toLedger),
+      scannedThroughLedger: Math.min(toLedger, page.latestLedger),
     };
   }
+}
+
+/** The configured history source: an archival RPC if set, else an HTTP history service. */
+export function defaultHistorySource(): HistorySource {
+  return process.env.HISTORY_RPC_URL ? new RpcHistorySource() : new HttpHistorySource();
 }
 
 export interface BackfillResult {
@@ -120,7 +181,7 @@ export async function backfillSource(
   source: { name: string; contractId: string },
   fromLedger: number,
   toLedger: number,
-  historySource: HistorySource = new HttpHistorySource(),
+  historySource: HistorySource = defaultHistorySource(),
   batchSize = 10_000,
 ): Promise<BackfillResult> {
   if (toLedger <= fromLedger) {
@@ -147,8 +208,11 @@ export async function backfillSource(
       totalSkipped += skipped;
     }
 
-    // Advance cursor only up to the ledger confirmed read/scanned
-    const targetCursor = scannedThroughLedger ?? currentTo;
+    // Advance only as far as the source proved it scanned.
+    if (typeof scannedThroughLedger !== "number") {
+      throw new Error(`${source.name}: history source did not report how far it scanned`);
+    }
+    const targetCursor = Math.min(scannedThroughLedger, currentTo);
     if (targetCursor > currentFrom) {
       await advance(source.name, targetCursor);
     }
@@ -177,7 +241,7 @@ export async function backfill(
   options: BackfillOptions & { config?: ChainConfig; targetLedger?: number } = {},
 ): Promise<BackfillResult[]> {
   const config = options.config ?? chainConfig();
-  const historySource = options.historySource ?? new HttpHistorySource();
+  const historySource = options.historySource ?? defaultHistorySource();
   const srv = server(config);
   const health = await srv.getHealth();
   const target = options.targetLedger ?? health.oldestLedger;
