@@ -3,12 +3,17 @@ import { CertificateCard } from "@/components/CertificateCard";
 
 export default function VerifyPage() {
   return (
-    <main className="max-w-4xl mx-auto p-6 font-sans">
-      <h1 className="text-2xl font-bold mb-2 text-gray-900">Verify Certificate</h1>
-      <p className="text-sm text-gray-600 mb-6">
-        Verify terminal receipts offline using cryptographic sorted-pair Merkle proofs or inspect receipt anchor status.
-      </p>
-      <CertificateCard />
+    <main className="desk">
+      <article className="document document--watermark">
+        <h1>Verify Certificate</h1>
+        <p className="lede">
+          Every finished pact gets a receipt, and receipts are anchored on-chain in batches. Paste a receipt certificate to
+          check it belongs to its anchored batch. The check runs in your browser; nothing is sent anywhere.
+        </p>
+        <div className="doc-section">
+          <CertificateCard />
+        </div>
+      </article>
     </main>
   );
 }

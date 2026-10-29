@@ -1,6 +1,7 @@
 import { getPrincipalDashboardData } from "@/lib/principal";
 import { AccountLink } from "@/components/TxLink";
 import { StateBadge } from "@/components/StateBadge";
+import { formatUsdc, modeName } from "@/lib/format";
 import type { PactState } from "@/lib/types";
 
 export default async function PrincipalViewPage({
@@ -13,16 +14,18 @@ export default async function PrincipalViewPage({
   try {
     data = await getPrincipalDashboardData(params?.principal);
   } catch {
-    // Database connection or table empty
+    // Database unavailable or empty
   }
 
   if (!data) {
     return (
-      <main className="max-w-5xl mx-auto p-6 font-sans">
-        <h1 className="text-2xl font-bold mb-4">Principal View</h1>
-        <div className="p-4 bg-yellow-50 border border-yellow-200 rounded text-yellow-800 text-sm">
-          No principal data found. Ensure migrations and seed data are loaded via <code>pnpm db:seed</code>.
-        </div>
+      <main className="desk">
+        <article className="document">
+          <h1>Principal View</h1>
+          <p className="notice">
+            No principals are registered yet. Running Studio locally? Load the sample accounts with <code>pnpm db:seed</code>.
+          </p>
+        </article>
       </main>
     );
   }
@@ -30,158 +33,129 @@ export default async function PrincipalViewPage({
   const { principal, allPrincipals, agents, budgets, livePacts, metrics } = data;
 
   return (
-    <main className="max-w-5xl mx-auto p-6 font-sans">
-      <header className="flex flex-col md:flex-row md:items-center justify-between border-b pb-4 mb-6 gap-4">
-        <div>
-          <span className="text-xs text-gray-500 uppercase tracking-wider block">Principal Account</span>
-          <h1 className="text-xl font-mono font-bold text-gray-900 break-all">{principal}</h1>
-        </div>
+    <main className="desk">
+      <article className="document document--watermark">
+        <span className="field-label">Principal View</span>
+        <h1 className="id-heading">{principal}</h1>
+        <p className="prose">The account that funds these agents, with each agent&apos;s budget and the pacts open right now.</p>
 
         {allPrincipals.length > 1 && (
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-500">Switch:</span>
-            <div className="flex gap-1">
-              {allPrincipals.map((p) => (
-                <a
-                  key={p}
-                  href={`/principal?principal=${p}`}
-                  className={`text-xs px-2.5 py-1 rounded border font-mono ${
-                    p === principal
-                      ? "bg-blue-600 text-white border-blue-600 font-semibold"
-                      : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
-                  }`}
-                >
-                  {p.slice(0, 4)}…{p.slice(-4)}
-                </a>
-              ))}
-            </div>
-          </div>
+          <nav className="chooser" aria-label="Choose a principal">
+            <span className="field-label">Other principals</span>
+            {allPrincipals.map((p) => (
+              <a key={p} href={`/principal?principal=${p}`} className="typed" aria-current={p === principal ? "true" : undefined}>
+                {p.slice(0, 4)}…{p.slice(-4)}
+              </a>
+            ))}
+          </nav>
         )}
-      </header>
 
-      {/* Metrics */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-          <span className="text-xs text-gray-500 uppercase font-medium">Total Allocated</span>
-          <p className="text-2xl font-mono font-bold text-gray-900 mt-1">
-            {metrics.totalBudget} <span className="text-xs text-gray-500 font-sans">USDC</span>
-          </p>
-          <span className="text-xs text-gray-400 mt-1 block">Across all agent budgets</span>
-        </div>
-
-        <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-          <span className="text-xs text-gray-500 uppercase font-medium">Funded Balance</span>
-          <p className="text-2xl font-mono font-bold text-green-700 mt-1">
-            {metrics.fundedBudget} <span className="text-xs text-gray-500 font-sans">USDC</span>
-          </p>
-          <span className="text-xs text-gray-400 mt-1 block">Ready for autonomous spend</span>
-        </div>
-
-        <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-          <span className="text-xs text-gray-500 uppercase font-medium">Managed Agents</span>
-          <p className="text-2xl font-mono font-bold text-blue-700 mt-1">{metrics.activeAgentsCount}</p>
-          <span className="text-xs text-gray-400 mt-1 block">Autonomous signer accounts</span>
-        </div>
-
-        <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-          <span className="text-xs text-gray-500 uppercase font-medium">Live Pacts</span>
-          <p className="text-2xl font-mono font-bold text-purple-700 mt-1">{metrics.livePactsCount}</p>
-          <span className="text-xs text-gray-400 mt-1 block">Currently active on-chain</span>
-        </div>
-      </section>
-
-      {/* Agents & Budgets */}
-      <section className="bg-white rounded-lg border border-gray-200 shadow-sm p-5 mb-8">
-        <h2 className="text-lg font-bold text-gray-900 mb-4">Agent Budgets</h2>
-        {budgets.length === 0 ? (
-          <p className="text-xs text-gray-500 italic">No budgets registered for these agents.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 text-left text-xs">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="py-2.5 px-3 font-semibold text-gray-600">Agent Address</th>
-                  <th className="py-2.5 px-3 font-semibold text-gray-600">Label</th>
-                  <th className="py-2.5 px-3 font-semibold text-gray-600">Amount</th>
-                  <th className="py-2.5 px-3 font-semibold text-gray-600">Asset</th>
-                  <th className="py-2.5 px-3 font-semibold text-gray-600">Status</th>
-                  <th className="py-2.5 px-3 font-semibold text-gray-600">Gate</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 font-mono">
-                {budgets.map((b) => {
-                  const agent = agents.find((a) => a.address === b.agent);
-                  return (
-                    <tr key={b.id} className="hover:bg-gray-50">
-                      <td className="py-2.5 px-3">
-                        <AccountLink address={b.agent} />
-                      </td>
-                      <td className="py-2.5 px-3 font-sans text-gray-700">{agent?.label ?? "—"}</td>
-                      <td className="py-2.5 px-3 font-bold text-gray-900">{b.amount}</td>
-                      <td className="py-2.5 px-3 text-gray-600">{b.asset}</td>
-                      <td className="py-2.5 px-3">
-                        <span
-                          className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase ${
-                            b.status === "funded"
-                              ? "bg-green-100 text-green-800"
-                              : "bg-yellow-100 text-yellow-800"
-                          }`}
-                        >
-                          {b.status}
-                        </span>
-                      </td>
-                      <td className="py-2.5 px-3 uppercase text-gray-500">{b.gate}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+        <section className="totals" aria-label="Totals">
+          <div className="total-box">
+            <span className="field-label">Allocated</span>
+            <span className="typed-value">{formatUsdc(metrics.totalBudget)} USDC</span>
+            <small>Across all agent budgets</small>
           </div>
-        )}
-      </section>
+          <div className="total-box">
+            <span className="field-label">Funded</span>
+            <span className="typed-value">{formatUsdc(metrics.fundedBudget)} USDC</span>
+            <small>Ready for agents to spend</small>
+          </div>
+          <div className="total-box">
+            <span className="field-label">Agents</span>
+            <span className="typed-value">{metrics.activeAgentsCount}</span>
+            <small>Signing accounts</small>
+          </div>
+          <div className="total-box">
+            <span className="field-label">Open pacts</span>
+            <span className="typed-value">{metrics.livePactsCount}</span>
+            <small>Not yet finished on-chain</small>
+          </div>
+        </section>
 
-      {/* Live Pacts */}
-      <section className="bg-white rounded-lg border border-gray-200 shadow-sm p-5">
-        <h2 className="text-lg font-bold text-gray-900 mb-4">Live & Active Pacts</h2>
-        {livePacts.length === 0 ? (
-          <p className="text-xs text-gray-500 italic">No live pacts active at the moment.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 text-left text-xs">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="py-2.5 px-3 font-semibold text-gray-600">Pact ID</th>
-                  <th className="py-2.5 px-3 font-semibold text-gray-600">Status</th>
-                  <th className="py-2.5 px-3 font-semibold text-gray-600">Mode</th>
-                  <th className="py-2.5 px-3 font-semibold text-gray-600">Cap (USDC)</th>
-                  <th className="py-2.5 px-3 font-semibold text-gray-600">Seller</th>
-                  <th className="py-2.5 px-3 font-semibold text-gray-600">Resource</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 font-mono">
-                {livePacts.map((p) => (
-                  <tr key={p.pact_id} className="hover:bg-gray-50">
-                    <td className="py-2.5 px-3 text-blue-600 font-bold">
-                      <a href={`/pact/${p.pact_id}`} className="hover:underline">
-                        {p.pact_id.slice(0, 8)}…{p.pact_id.slice(-8)}
-                      </a>
-                    </td>
-                    <td className="py-2.5 px-3">
-                      <StateBadge state={p.state as PactState} />
-                    </td>
-                    <td className="py-2.5 px-3 uppercase text-gray-700">{p.mode}</td>
-                    <td className="py-2.5 px-3 font-bold text-gray-900">{p.cap}</td>
-                    <td className="py-2.5 px-3">
-                      <AccountLink address={p.seller} />
-                    </td>
-                    <td className="py-2.5 px-3 font-sans text-gray-600 break-all">{p.resource_url}</td>
+        <section className="doc-section" aria-labelledby="budgets-title">
+          <h2 id="budgets-title">Agent budgets</h2>
+          {budgets.length === 0 ? (
+            <p className="empty-note">None of these agents has a budget yet.</p>
+          ) : (
+            <div className="ledger-wrap">
+              <table className="ledger">
+                <thead>
+                  <tr>
+                    <th scope="col">Agent</th>
+                    <th scope="col">Name</th>
+                    <th scope="col" className="num">Amount</th>
+                    <th scope="col">Asset</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Approval</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+                </thead>
+                <tbody>
+                  {budgets.map((b) => {
+                    const agent = agents.find((a) => a.address === b.agent);
+                    return (
+                      <tr key={b.id}>
+                        <td className="typed">
+                          <AccountLink address={b.agent} />
+                        </td>
+                        <td>{agent?.label ?? "Unnamed"}</td>
+                        <td className="typed num">{formatUsdc(b.amount)}</td>
+                        <td className="typed">{b.asset}</td>
+                        <td>
+                          <span className="stamp stamp--small" data-ink={b.status === "funded" ? "teal" : "indigo"}>
+                            {b.status === "funded" ? "Funded" : "Not funded"}
+                          </span>
+                        </td>
+                        <td>{b.gate}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+
+        <section className="doc-section" aria-labelledby="open-title">
+          <h2 id="open-title">Open pacts</h2>
+          {livePacts.length === 0 ? (
+            <p className="empty-note">No pacts are open right now.</p>
+          ) : (
+            <div className="ledger-wrap">
+              <table className="ledger">
+                <thead>
+                  <tr>
+                    <th scope="col">Pact</th>
+                    <th scope="col">State</th>
+                    <th scope="col">Mode</th>
+                    <th scope="col" className="num">Cap (USDC)</th>
+                    <th scope="col">Seller</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {livePacts.map((p) => (
+                    <tr key={p.pact_id}>
+                      <td className="typed">
+                        <a href={`/pact/${p.pact_id}`}>
+                          {p.pact_id.slice(0, 8)}…{p.pact_id.slice(-6)}
+                        </a>
+                      </td>
+                      <td>
+                        <StateBadge state={p.state as PactState} />
+                      </td>
+                      <td>{modeName(p.mode)}</td>
+                      <td className="typed num">{formatUsdc(p.cap)}</td>
+                      <td className="typed">
+                        <AccountLink address={p.seller} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      </article>
     </main>
   );
 }

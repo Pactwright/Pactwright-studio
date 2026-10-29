@@ -1,5 +1,6 @@
 import { getMerchantDashboardData } from "@/lib/merchant";
 import { AccountLink } from "@/components/TxLink";
+import { formatUsdc, modeName, silenceName } from "@/lib/format";
 
 export default async function MerchantDashboardPage({
   searchParams,
@@ -11,16 +12,18 @@ export default async function MerchantDashboardPage({
   try {
     data = await getMerchantDashboardData(params?.seller);
   } catch {
-    // Database connection or table empty
+    // Database unavailable or empty
   }
 
   if (!data) {
     return (
-      <main className="max-w-5xl mx-auto p-6 font-sans">
-        <h1 className="text-2xl font-bold mb-4">Merchant Dashboard</h1>
-        <div className="p-4 bg-yellow-50 border border-yellow-200 rounded text-yellow-800 text-sm">
-          No seller data found. Ensure migrations and seed data are loaded via <code>pnpm db:seed</code>.
-        </div>
+      <main className="desk">
+        <article className="document">
+          <h1>Merchant Dashboard</h1>
+          <p className="notice">
+            No sellers are registered yet. Running Studio locally? Load the sample sellers with <code>pnpm db:seed</code>.
+          </p>
+        </article>
       </main>
     );
   }
@@ -28,103 +31,80 @@ export default async function MerchantDashboardPage({
   const { seller, allSellers, metrics, routes } = data;
 
   return (
-    <main className="max-w-5xl mx-auto p-6 font-sans">
-      <header className="flex flex-col md:flex-row md:items-center justify-between border-b pb-4 mb-6 gap-4">
-        <div>
-          <span className="text-xs text-gray-500 uppercase tracking-wider block">Seller Profile</span>
-          <h1 className="text-2xl font-bold text-gray-900">{seller.name}</h1>
-          <div className="text-xs mt-1">
-            <span className="text-gray-500 mr-1">Address:</span>
-            <AccountLink address={seller.address} truncate={false} />
-          </div>
-        </div>
+    <main className="desk">
+      <article className="document document--watermark">
+        <span className="field-label">Merchant Dashboard</span>
+        <h1>{seller.name}</h1>
+        <p className="prose">
+          Seller account <AccountLink address={seller.address} truncate={false} />
+        </p>
 
         {allSellers.length > 1 && (
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-500">Switch Seller:</span>
-            <div className="flex gap-1">
-              {allSellers.map((s) => (
-                <a
-                  key={s.address}
-                  href={`/merchant?seller=${s.address}`}
-                  className={`text-xs px-2.5 py-1 rounded border ${
-                    s.address === seller.address
-                      ? "bg-blue-600 text-white border-blue-600 font-semibold"
-                      : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
-                  }`}
-                >
-                  {s.name}
-                </a>
-              ))}
-            </div>
-          </div>
+          <nav className="chooser" aria-label="Choose a seller">
+            <span className="field-label">Other sellers</span>
+            {allSellers.map((s) => (
+              <a key={s.address} href={`/merchant?seller=${s.address}`} aria-current={s.address === seller.address ? "true" : undefined}>
+                {s.name}
+              </a>
+            ))}
+          </nav>
         )}
-      </header>
 
-      {/* Metric Cards */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-          <span className="text-xs text-gray-500 uppercase font-medium">Total Revenue</span>
-          <p className="text-2xl font-mono font-bold text-green-700 mt-1">
-            {metrics.totalRevenue} <span className="text-xs text-gray-500 font-sans">USDC</span>
-          </p>
-          <span className="text-xs text-gray-400 mt-1 block">From settled & paid pacts</span>
-        </div>
+        <section className="totals" aria-label="Totals">
+          <div className="total-box">
+            <span className="field-label">Revenue</span>
+            <span className="typed-value">{formatUsdc(metrics.totalRevenue)} USDC</span>
+            <small>From settled and paid pacts</small>
+          </div>
+          <div className="total-box">
+            <span className="field-label">Pacts</span>
+            <span className="typed-value">{metrics.totalPacts}</span>
+            <small>{metrics.settledPacts} settled</small>
+          </div>
+          <div className="total-box">
+            <span className="field-label">Refund rate</span>
+            <span className="typed-value">{metrics.refundRate}%</span>
+            <small>{metrics.refundedPacts} refunded</small>
+          </div>
+          <div className="total-box">
+            <span className="field-label">Dispute rate</span>
+            <span className="typed-value">{metrics.disputeRate}%</span>
+            <small>{metrics.disputeCount} denied verdicts</small>
+          </div>
+        </section>
 
-        <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-          <span className="text-xs text-gray-500 uppercase font-medium">Total Pacts</span>
-          <p className="text-2xl font-mono font-bold text-gray-900 mt-1">{metrics.totalPacts}</p>
-          <span className="text-xs text-gray-400 mt-1 block">{metrics.settledPacts} settled successfully</span>
-        </div>
-
-        <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-          <span className="text-xs text-gray-500 uppercase font-medium">Refund Rate</span>
-          <p className="text-2xl font-mono font-bold text-blue-700 mt-1">{metrics.refundRate}%</p>
-          <span className="text-xs text-gray-400 mt-1 block">{metrics.refundedPacts} refunded pacts</span>
-        </div>
-
-        <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-          <span className="text-xs text-gray-500 uppercase font-medium">Dispute Rate</span>
-          <p className="text-2xl font-mono font-bold text-purple-700 mt-1">{metrics.disputeRate}%</p>
-          <span className="text-xs text-gray-400 mt-1 block">{metrics.disputeCount} denied verdicts</span>
-        </div>
-      </section>
-
-      {/* Routes & Cost breakdown */}
-      <section className="bg-white rounded-lg border border-gray-200 shadow-sm p-5">
-        <h2 className="text-lg font-bold text-gray-900 mb-4">Configured Routes & Pricing</h2>
-
-        {routes.length === 0 ? (
-          <p className="text-xs text-gray-500 italic">No routes registered for this seller.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 text-left text-xs">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="py-2.5 px-3 font-semibold text-gray-600">Resource URL</th>
-                  <th className="py-2.5 px-3 font-semibold text-gray-600">Mode</th>
-                  <th className="py-2.5 px-3 font-semibold text-gray-600">Price (USDC)</th>
-                  <th className="py-2.5 px-3 font-semibold text-gray-600">Silence Policy</th>
-                  <th className="py-2.5 px-3 font-semibold text-gray-600">Refund Window</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 font-mono">
-                {routes.map((route) => (
-                  <tr key={route.id} className="hover:bg-gray-50">
-                    <td className="py-2.5 px-3 text-blue-600 font-sans font-medium break-all">
-                      {route.resource_url}
-                    </td>
-                    <td className="py-2.5 px-3 uppercase text-gray-700">{route.mode}</td>
-                    <td className="py-2.5 px-3 text-gray-900 font-bold">{route.price}</td>
-                    <td className="py-2.5 px-3 text-gray-600 capitalize font-sans">{route.silence ?? "none"}</td>
-                    <td className="py-2.5 px-3 text-gray-500">{route.refund_window_ledgers} ledgers</td>
+        <section className="doc-section" aria-labelledby="routes-title">
+          <h2 id="routes-title">Routes and prices</h2>
+          {routes.length === 0 ? (
+            <p className="empty-note">This seller hasn&apos;t registered any routes.</p>
+          ) : (
+            <div className="ledger-wrap">
+              <table className="ledger">
+                <thead>
+                  <tr>
+                    <th scope="col">Resource</th>
+                    <th scope="col">Mode</th>
+                    <th scope="col" className="num">Price (USDC)</th>
+                    <th scope="col">If no verdict arrives</th>
+                    <th scope="col" className="num">Refund window</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+                </thead>
+                <tbody>
+                  {routes.map((route) => (
+                    <tr key={route.id}>
+                      <td className="typed wrap">{route.resource_url}</td>
+                      <td>{modeName(route.mode)}</td>
+                      <td className="typed num">{formatUsdc(route.price)}</td>
+                      <td>{silenceName(route.silence)}</td>
+                      <td className="typed num">{route.refund_window_ledgers} ledgers</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      </article>
     </main>
   );
 }

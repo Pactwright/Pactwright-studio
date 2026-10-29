@@ -17,7 +17,7 @@ export function TxLink({ hash, network, truncate = true }: TxLinkProps) {
       href={url}
       target="_blank"
       rel="noopener noreferrer"
-      className="text-blue-600 hover:underline font-mono"
+      className="typed"
       title={hash}
     >
       <code>{display}</code>
@@ -44,7 +44,7 @@ export function AccountLink({
       href={url}
       target="_blank"
       rel="noopener noreferrer"
-      className="text-blue-600 hover:underline font-mono"
+      className="typed"
       title={address}
     >
       <code>{display}</code>
@@ -71,7 +71,7 @@ export function ContractLink({
       href={url}
       target="_blank"
       rel="noopener noreferrer"
-      className="text-blue-600 hover:underline font-mono"
+      className="typed"
       title={contractId}
     >
       <code>{display}</code>
