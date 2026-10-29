@@ -26,12 +26,23 @@ export async function runMigrations(databaseUrl = process.env.DATABASE_URL) {
 
     console.log(`Found ${files.length} migration file(s) in ${__dirname}`);
 
+    // Applied migrations are recorded, so running this again only applies new files.
+    await client.query(
+      "create table if not exists schema_migrations (file text primary key, applied_at timestamptz not null default now())",
+    );
+    const applied = new Set((await client.query("select file from schema_migrations")).rows.map((r) => r.file));
+
     for (const file of files) {
+      if (applied.has(file)) {
+        console.log(`- Already applied: ${file}`);
+        continue;
+      }
       const filePath = resolve(__dirname, file);
       const sql = await readFile(filePath, "utf-8");
       console.log(`Applying migration: ${file}...`);
       await client.query("BEGIN");
       await client.query(sql);
+      await client.query("insert into schema_migrations (file) values ($1)", [file]);
       await client.query("COMMIT");
       console.log(`✓ Applied: ${file}`);
     }

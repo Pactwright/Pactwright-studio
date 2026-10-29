@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "formula": "sha256(\"pactwright-receipt-v1\" || pact_id || transition_u32 || to_seller_i128 || to_buyer_i128 || (envelope_hash or 32 zero bytes) || ledger_u32)",
+  "notes": "transitions: 1 paid, 2 settled, 3 released, 4 refunded; integers big-endian (i128 = 16 bytes, two's complement)",
+  "cases": [
+    {"name": "paid (M0)", "input": {"pact_id": "0101010101010101010101010101010101010101010101010101010101010101", "transition": 1, "to_seller": "10000000", "to_buyer": "0", "envelope_hash": null, "ledger": 500}, "output": "84ce7094ace6c023ec88aa3f1eb308a4fa3e4d99b79ca4a2a4835bef444f1a14"},
+    {"name": "settled, partial", "input": {"pact_id": "0101010101010101010101010101010101010101010101010101010101010101", "transition": 2, "to_seller": "7500000", "to_buyer": "2500000", "envelope_hash": "0303030303030303030303030303030303030303030303030303030303030303", "ledger": 600}, "output": "e380abb3b02700f4638f1934fd3d750d9e1559cece103358e15ee1a70ea7c6ab"},
+    {"name": "released", "input": {"pact_id": "0101010101010101010101010101010101010101010101010101010101010101", "transition": 3, "to_seller": "0", "to_buyer": "10000000", "envelope_hash": "0404040404040404040404040404040404040404040404040404040404040404", "ledger": 700}, "output": "14f1c564621020a982c53c9e9e7c2e10f68bbc8459e8585cd70f42a35a4d3763"},
+    {"name": "refunded", "input": {"pact_id": "0101010101010101010101010101010101010101010101010101010101010101", "transition": 4, "to_seller": "0", "to_buyer": "10000000", "envelope_hash": null, "ledger": 800}, "output": "804f560a405f7bdd33d3fdb43ae87df67e3c9a7c779c2ec265d6123f43cb2613"}
+  ]
+}

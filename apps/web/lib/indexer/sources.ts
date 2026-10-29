@@ -1,7 +1,14 @@
 /**
- * Event sources and decoders for Pactwright, Facilitator and RefundVault. ROADMAP S-02.
+ * Decoders for the events Studio indexes, as the contracts emit them. ROADMAP S-02.
+ *
+ * - `pact` contract: topics `("pact", <name>)`, data a map (Pactwright-contracts docs/EVENTS.md).
+ * - Accensa RefundVault v0.2.0: topics `("refund_event", payment_ref)`, data
+ *   `{ amount, ledger, recipient }`. Pactwright uses `payment_ref = pact_id`.
+ *
+ * Amounts stay in stroops (decimal strings of integers) until they are written to the database.
  */
-import type { Stage, Mode, PactState } from "@/lib/types";
+import { chainConfig, contractEvents, type ChainConfig, type RawEvent } from "@/lib/chain";
+import type { Mode, PactState, Stage } from "@/lib/types";
 
 export interface DecodedEvent {
   source: string;
@@ -10,217 +17,117 @@ export interface DecodedEvent {
   txHash: string;
   ledger: number;
   data: Record<string, unknown>;
-  // Pact state mutation:
   pactState?: PactState;
   mode?: Mode;
   buyer?: string;
   seller?: string;
-  resourceUrl?: string;
+  /** Stroops. */
   cap?: string;
   conditionHash?: string;
-  condition?: Record<string, unknown>;
   metered?: boolean;
   silence?: "refund" | "pay" | null;
   verdictDeadline?: number | null;
   settleDeadline?: number | null;
+  verdict?: "ALLOW" | "DENY";
+  /** Stroops. */
+  amount?: string;
+  /** Stroops. */
   toSeller?: string;
+  /** Stroops. */
   toBuyer?: string;
   envelopeHash?: string;
 }
 
-/**
- * Decodes raw pact contract events.
- */
-export function decodePactEvent(raw: {
-  topic: string;
-  txHash: string;
-  ledger: number;
-  payload: Record<string, unknown>;
-}): DecodedEvent | null {
-  const { topic, txHash, ledger, payload } = raw;
-  const pactId = String(payload.pactId ?? payload.pact_id ?? "");
+const hex = (v: unknown): string => Buffer.from(v as Uint8Array).toString("hex");
+const int = (v: unknown): string => BigInt(v as bigint | number | string).toString();
 
-  if (!pactId) return null;
+/** JSON-safe copy of an event's data for `pact_events.data`. */
+function jsonData(value: unknown): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries((value ?? {}) as Record<string, unknown>)) {
+    out[k] = v instanceof Uint8Array ? hex(v) : typeof v === "bigint" ? v.toString() : v;
+  }
+  return out;
+}
 
-  switch (topic) {
+export function decodePactEvent(raw: RawEvent): DecodedEvent | null {
+  const [namespace, name] = raw.topics;
+  if (namespace !== "pact" || typeof name !== "string") return null;
+  const d = (raw.value ?? {}) as Record<string, unknown>;
+  if (!(d.pact_id instanceof Uint8Array)) return null;
+  const base = { source: "pact", pactId: hex(d.pact_id), txHash: raw.txHash, ledger: raw.ledger, data: jsonData(d) };
+
+  switch (name) {
     case "opened":
-    case "pact_opened":
       return {
-        source: "pact",
-        pactId,
+        ...base,
         stage: "opened",
-        txHash,
-        ledger,
         pactState: "funded",
-        mode: (payload.mode as Mode) ?? "escrow",
-        buyer: String(payload.buyer ?? ""),
-        seller: String(payload.seller ?? ""),
-        resourceUrl: String(payload.resourceUrl ?? payload.resource_url ?? ""),
-        cap: String(payload.cap ?? "0"),
-        conditionHash: String(payload.conditionHash ?? payload.condition_hash ?? ""),
-        condition: (payload.condition as Record<string, unknown>) ?? {},
-        metered: Boolean(payload.metered),
-        silence: (payload.silence as "refund" | "pay") ?? null,
-        verdictDeadline: payload.verdictDeadline != null ? Number(payload.verdictDeadline) : null,
-        settleDeadline: payload.settleDeadline != null ? Number(payload.settleDeadline) : null,
-        toSeller: "0",
-        toBuyer: "0",
-        data: payload,
+        mode: "escrow",
+        buyer: String(d.buyer),
+        seller: String(d.seller),
+        cap: int(d.cap),
+        conditionHash: hex(d.condition_hash),
+        metered: Boolean(d.metered),
+        silence: Number(d.silence) === 2 ? "pay" : "refund",
+        verdictDeadline: Number(d.verdict_deadline),
+        settleDeadline: Number(d.settle_deadline),
       };
-
-    case "paid":
-    case "pact_paid":
+    case "verdict": {
+      const verdict = Number(d.verdict) === 1 ? "ALLOW" : "DENY";
       return {
-        source: "pact",
-        pactId,
-        stage: "paid",
-        txHash,
-        ledger,
-        pactState: "paid",
-        toSeller: String(payload.toSeller ?? payload.to_seller ?? payload.amount ?? "0"),
-        toBuyer: String(payload.toBuyer ?? payload.to_buyer ?? "0"),
-        data: payload,
-      };
-
-    case "verdict":
-    case "verdict_submitted":
-      return {
-        source: "pact",
-        pactId,
+        ...base,
         stage: "verdict",
-        txHash,
-        ledger,
-        pactState: String(payload.verdict).toUpperCase() === "ALLOW" ? "allowed" : "denied",
-        envelopeHash: String(payload.envelopeHash ?? payload.envelope_hash ?? ""),
-        data: payload,
+        pactState: verdict === "ALLOW" ? "allowed" : "denied",
+        verdict,
+        amount: int(d.amount),
+        envelopeHash: hex(d.envelope_hash),
       };
-
+    }
     case "settled":
-    case "pact_settled":
-      return {
-        source: "pact",
-        pactId,
-        stage: "settled",
-        txHash,
-        ledger,
-        pactState: "settled",
-        toSeller: String(payload.toSeller ?? payload.to_seller ?? "0"),
-        toBuyer: String(payload.toBuyer ?? payload.to_buyer ?? "0"),
-        data: payload,
-      };
-
+      return { ...base, stage: "settled", pactState: "settled", toSeller: int(d.to_seller), toBuyer: int(d.to_buyer) };
     case "meter_closed":
-      return {
-        source: "pact",
-        pactId,
-        stage: "meter_closed",
-        txHash,
-        ledger,
-        data: payload,
-      };
-
+      return { ...base, stage: "meter_closed", pactState: "settled", toSeller: int(d.to_seller), toBuyer: int(d.to_buyer) };
     case "released":
-    case "pact_released":
-      return {
-        source: "pact",
-        pactId,
-        stage: "released",
-        txHash,
-        ledger,
-        pactState: "released",
-        toSeller: String(payload.toSeller ?? payload.to_seller ?? "0"),
-        toBuyer: String(payload.toBuyer ?? payload.to_buyer ?? "0"),
-        data: payload,
-      };
-
-    case "refunded":
-    case "pact_refunded":
-      return {
-        source: "pact",
-        pactId,
-        stage: "refunded",
-        txHash,
-        ledger,
-        pactState: "refunded",
-        toSeller: "0",
-        toBuyer: String(payload.toBuyer ?? payload.to_buyer ?? payload.amount ?? "0"),
-        data: payload,
-      };
-
+      return { ...base, stage: "released", pactState: "released", toSeller: "0", toBuyer: int(d.to_buyer) };
     default:
       return null;
   }
 }
 
-/**
- * Decodes facilitator settlement events.
- */
-export function decodeFacilitatorEvent(raw: {
-  topic: string;
-  txHash: string;
-  ledger: number;
-  payload: Record<string, unknown>;
-}): DecodedEvent | null {
-  const { topic, txHash, ledger, payload } = raw;
-  const pactId = String(payload.pactId ?? payload.pact_id ?? "");
-  if (!pactId) return null;
-
-  if (topic === "settle" || topic === "settled" || topic === "facilitator_settled") {
-    return {
-      source: "facilitator",
-      pactId,
-      stage: "settled",
-      txHash,
-      ledger,
-      pactState: "settled",
-      toSeller: String(payload.amount ?? payload.toSeller ?? payload.to_seller ?? "0"),
-      toBuyer: "0",
-      data: payload,
-    };
-  }
-
-  return null;
+export function decodeRefundVaultEvent(raw: RawEvent): DecodedEvent | null {
+  const [name, paymentRef] = raw.topics;
+  if (name !== "refund_event" || !(paymentRef instanceof Uint8Array) || paymentRef.length !== 32) return null;
+  const d = (raw.value ?? {}) as Record<string, unknown>;
+  return {
+    source: `refund_vault:${raw.contractId}`,
+    pactId: hex(paymentRef),
+    stage: "refunded",
+    txHash: raw.txHash,
+    ledger: raw.ledger,
+    pactState: "refunded",
+    toSeller: "0",
+    toBuyer: int(d.amount),
+    data: { ...jsonData(d), vault: raw.contractId },
+  };
 }
 
-/**
- * Decodes RefundVault refund events.
- */
-export function decodeRefundVaultEvent(raw: {
-  vaultId: string;
-  topic: string;
-  txHash: string;
-  ledger: number;
-  payload: Record<string, unknown>;
-}): DecodedEvent | null {
-  const { vaultId, topic, txHash, ledger, payload } = raw;
-  const pactId = String(payload.pactId ?? payload.pact_id ?? "");
-  if (!pactId) return null;
-
-  if (topic === "refund" || topic === "refunded") {
-    return {
-      source: `refund_vault:${vaultId}`,
-      pactId,
-      stage: "refunded",
-      txHash,
-      ledger,
-      pactState: "refunded",
-      toSeller: "0",
-      toBuyer: String(payload.amount ?? payload.toBuyer ?? payload.to_buyer ?? "0"),
-      data: payload,
-    };
-  }
-
-  return null;
+/** The sources to index: the pact contract and every configured RefundVault. */
+export function sources(config: ChainConfig = chainConfig()): Array<{ name: string; contractId: string }> {
+  return [
+    { name: "pact", contractId: config.pactContractId },
+    ...config.refundVaultIds.map((id) => ({ name: `refund_vault:${id}`, contractId: id })),
+  ];
 }
 
-/**
- * Fetches events from configured RPC or mock source for the given ledger range.
- */
+/** Reads one source from `fromLedger` to the RPC's latest ledger and decodes its events. */
 export async function fetchEvents(
-  _source: string,
-  _fromLedger: number,
-  _toLedger?: number
-): Promise<DecodedEvent[]> {
-  // Production connects to Soroban RPC getEvents; stub returns empty array unless events injected
-  return [];
+  source: { name: string; contractId: string },
+  fromLedger: number,
+  config: ChainConfig = chainConfig(),
+): Promise<{ events: DecodedEvent[]; latestLedger: number; oldestLedger: number }> {
+  const page = await contractEvents(config, source.contractId, fromLedger);
+  const decode = source.name === "pact" ? decodePactEvent : decodeRefundVaultEvent;
+  const events = page.events.map(decode).filter((e): e is DecodedEvent => e !== null);
+  return { events, latestLedger: page.latestLedger, oldestLedger: page.oldestLedger };
 }

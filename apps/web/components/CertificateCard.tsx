@@ -13,7 +13,6 @@ export interface CertificateData {
   proof?: string[];
   root?: string;
   batchId?: number;
-  shardId?: number;
   receiptAnchor?: string;
 }
 

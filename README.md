@@ -11,7 +11,8 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Pactwright/Pactwright-studio/actions/workflows/ci.yml"><img src="https://img.shields.io/badge/tests-44_unit_%2B_e2e-2DD4BF?style=for-the-badge&labelColor=0B1220" alt="44 unit tests plus end-to-end tests"></a>
+  <a href="https://github.com/Pactwright/Pactwright-studio/actions/workflows/ci.yml"><img src="https://img.shields.io/badge/tests-48_unit_%2B_e2e-2DD4BF?style=for-the-badge&labelColor=0B1220" alt="48 unit tests plus end-to-end tests"></a>
+  <a href="#what-works-today"><img src="https://img.shields.io/badge/anchoring-testnet-2DD4BF?style=for-the-badge&labelColor=0B1220" alt="Anchoring on testnet"></a>
   <a href="#what-works-today"><img src="https://img.shields.io/badge/deployment-not_yet-F59E0B?style=for-the-badge&labelColor=0B1220" alt="Not deployed yet"></a>
   <a href="https://github.com/Pactwright/Pactwright-contracts"><img src="https://img.shields.io/badge/contract-testnet-6366F1?style=for-the-badge&labelColor=0B1220" alt="Contract on testnet"></a>
   <a href="#license"><img src="https://img.shields.io/badge/license-MIT-94A3B8?style=for-the-badge&labelColor=0B1220" alt="MIT license"></a>
@@ -32,10 +33,10 @@
 </p>
 
 > [!IMPORTANT]
-> **Not deployed yet.** The pages, API, indexer and anchorer logic run locally and are tested
-> against Postgres and fixture data. Two connections to the chain are still stubs: reading events
-> from Stellar RPC, and submitting `anchor_batch` transactions. Until they land, Studio shows
-> seeded data rather than live testnet pacts. [What works today](#what-works-today) has the details.
+> **Not deployed yet.** The indexer reads real `pact` and RefundVault events from Stellar testnet,
+> and the anchorer has anchored real receipts on the deployed ReceiptAnchor. Every proof verified
+> on-chain with `verify_receipt` ([batch 1](https://stellar.expert/explorer/testnet/tx/be51068eea65b8f47799253ca45bd5e5d9c014d7cae0b873f19150658d8edfb0)).
+> There is no public URL yet. [What works today](#what-works-today) has the details.
 
 ## Contents
 
@@ -60,7 +61,7 @@
 
 - **What a pact is.** An AI agent's purchase held in escrow on Stellar. The buyer's money moves only when a verifier confirms delivery; otherwise it goes back. The [contract](https://github.com/Pactwright/Pactwright-contracts) runs on testnet.
 - **What Studio does.** It follows every pact on-chain and shows its timeline. It turns each final outcome into a receipt and anchors batches of receipts on Stellar. The result is a certificate anyone can check, with or without trusting Studio.
-- **What runs today.** A Next.js app with the pact timeline, the certificate viewer, merchant and principal dashboards, the indexer and anchorer logic, ops health checks and a Postgres schema. It has 44 unit tests and Playwright end-to-end tests in CI.
+- **What runs today.** A Next.js app with the pact timeline, the certificate viewer, merchant and principal dashboards, the indexer and anchorer logic, ops health checks and a Postgres schema. It has 48 unit tests and Playwright end-to-end tests in CI, plus a live testnet test that indexes, anchors and verifies real receipts.
 - **What's next.** Connect the indexer to Stellar RPC and the anchorer to the deployed `ReceiptAnchor`, then deploy.
 
 ## Why this exists
@@ -111,19 +112,29 @@ flowchart LR
 
 | Piece | Status | Notes |
 |---|---|---|
-| Postgres schema and migrations | ✅ Working | `001_core.sql` (pacts, events, verdicts, receipts, batches, sync state), `002_accounts.sql` (sellers, routes, agents, budgets). Checked in CI |
-| Event decoding and idempotent writes | ✅ Working | `pact`, facilitator and `RefundVault` events. Tested with fixtures |
-| Backfill and lag alerting | ✅ Working | Tested with fixtures |
-| Reading events from Stellar RPC | 🚧 Stub | `fetchEvents` returns no events until connected |
-| Merkle batching and proofs | ✅ Working | Sorted pairs; an odd node is promoted unchanged |
-| Submitting `anchor_batch` on-chain | 🚧 Stub | Batches and proofs are stored with a placeholder transaction ID |
-| Crash reconciliation | ✅ Working | Tested |
-| Offline certificate verification | ✅ Working | `verifyReceipt(leaf, proof, root)` |
+| Postgres schema and migrations | ✅ Working | `001_core.sql`, `002_accounts.sql`, `003_receipt_anchor_v020.sql`. Each file is applied once; the runner records what it applied |
+| Indexer: Stellar RPC `getEvents` | ✅ Testnet | `pact` events and RefundVault refunds, one cursor per source, one database transaction per event, idempotent |
+| Receipt leaves | ✅ Working | Byte for byte as the contract's `receipt_leaf`, tested against its vectors. Each receipt keeps its leaf inputs so anyone can recompute it |
+| Anchorer: `anchor_batch` | ✅ Testnet | Real transactions signed by the ReceiptAnchor admin key. Batch 1: 9 receipts, [`be51068e…`](https://stellar.expert/explorer/testnet/tx/be51068eea65b8f47799253ca45bd5e5d9c014d7cae0b873f19150658d8edfb0) |
+| Crash safety | ✅ Working | Each batch is recorded as a plan before it's sent; the next run settles plans against the chain, so a batch is never anchored twice or lost |
+| Certificates | ✅ Testnet | Every anchored proof verifies offline and with ReceiptAnchor's own `verify_receipt` |
+| Lag alerting | ✅ Working | Alert at 50% of RPC retention |
+| Backfill from a history source | 🚧 Not yet | If the cursor falls outside RPC retention, `sync` stops with an error rather than skip events (S-03) |
+| M0 pacts | 🚧 Not yet | M0 pacts aren't opened on-chain, so Studio learns of them from the facilitator (X-*). Until then, their refunds are skipped |
 | Pact timeline, certificate viewer | ✅ Working | Playwright end-to-end tests |
-| Merchant dashboard, principal view | ✅ Working | On seeded data |
+| Merchant dashboard, principal view | 🧪 Seeded data | No sign-in yet |
 | Ops health probes | ✅ Working | Tested |
 | Pollar Studio storefront template | ✅ Template | `templates/pollar-studio`, built with the public Pollar SDK only |
-| Hosted deployment | 📋 Not yet | Config is ready (`vercel.json` cron jobs); no public URL yet |
+| Hosted deployment | 📋 Not yet | Needs a host and a managed Postgres (S-10) |
+
+Run the live check yourself (it sends real `anchor_batch` transactions):
+
+```bash
+DATABASE_URL=… ANCHORER_SECRET=S… STELLAR_NETWORK=testnet STELLAR_RPC_URL=https://soroban-testnet.stellar.org \
+PACT_CONTRACT_ID=CDUXJJUNYFILEYHE3LITANJEKCDFERNAABOSG75OWATFVM776BCMFEV6 \
+RECEIPT_ANCHOR_ID=CAEO5GBC3ULRC5RYBSCSOXLNXHU2HZAHNW5HY5LZM3DIPFMX357ILNJ2 INDEX_START_LEDGER=… \
+pnpm --filter web live:testnet
+```
 
 ## Pages and API
 
@@ -154,7 +165,7 @@ pnpm dev                      # http://localhost:3000
 
 ```bash
 pnpm typecheck
-pnpm test                     # 44 unit tests
+pnpm test                     # 48 unit tests
 pnpm --filter web e2e         # Playwright end-to-end tests
 ```
 
@@ -221,11 +232,11 @@ Studio doesn't show them yet: reading events from Stellar RPC (S-02) and anchori
 
 ## Project status
 
-The app, schema, dashboards and the indexer and anchorer logic are built and tested. Next:
+The indexer and anchorer work against testnet. Next:
 
-1. Connect the indexer to Stellar RPC `getEvents` for the testnet `pact` contract.
-2. Submit `anchor_batch` to the testnet `ReceiptAnchor` ([`CAEO5GBC…LNJ2`](https://stellar.expert/explorer/testnet/contract/CAEO5GBC3ULRC5RYBSCSOXLNXHU2HZAHNW5HY5LZM3DIPFMX357ILNJ2)) and store the real transaction hash.
-3. Deploy to testnet with a public URL.
+1. Deploy to testnet with a public URL (S-10).
+2. Backfill from a history source when the indexer falls behind RPC retention (S-03).
+3. Index M0 pacts once the facilitator's `pact` scheme reports them (X-*).
 
 [ROADMAP.md](ROADMAP.md) tracks every task. Every pull request updates it.
 

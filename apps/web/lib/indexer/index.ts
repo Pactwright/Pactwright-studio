@@ -1,163 +1,175 @@
 /**
- * Indexer entry: pact events, facilitator settlements, RefundVault refunds; idempotent writes. ROADMAP S-02.
+ * Indexer: reads `pact` and RefundVault events from Stellar RPC and writes them idempotently,
+ * one database transaction per event. Every terminal transition becomes a pending receipt leaf
+ * for the anchorer. ROADMAP S-02.
  */
+import type { PoolClient } from "pg";
 import { db } from "@/lib/db";
+import { chainConfig, server, type ChainConfig } from "@/lib/chain";
 import { getCursor, advance } from "@/lib/indexer/cursor";
-import { fetchEvents, type DecodedEvent } from "@/lib/indexer/sources";
+import { fetchEvents, sources, type DecodedEvent } from "@/lib/indexer/sources";
 import { computeReceiptLeaf } from "@/lib/verify";
 import type { Transition } from "@/lib/types";
 
-export interface SyncOptions {
-  source?: string;
-  fromLedger?: number;
-  toLedger?: number;
-  events?: DecodedEvent[];
+/** Stroops (integer string) → numeric(30,7) decimal string. */
+export function stroopsToDecimal(stroops: string | bigint): string {
+  const v = BigInt(stroops);
+  const neg = v < 0n;
+  const abs = neg ? -v : v;
+  return `${neg ? "-" : ""}${abs / 10_000_000n}.${(abs % 10_000_000n).toString().padStart(7, "0")}`;
+}
+
+export interface PersistResult {
+  indexed: number;
+  /** Events for pacts Studio has never seen (e.g. M0 refunds before the facilitator reports the pact). */
+  skipped: number;
+}
+
+/** Writes decoded events. Re-running over the same events changes nothing. */
+export async function persistEvents(events: DecodedEvent[]): Promise<PersistResult> {
+  const result: PersistResult = { indexed: 0, skipped: 0 };
+  if (events.length === 0) return result;
+  const client = await db().connect();
+  try {
+    for (const ev of events) {
+      await client.query("BEGIN");
+      try {
+        const written = await persistOne(client, ev);
+        await client.query("COMMIT");
+        if (written) result.indexed++;
+        else result.skipped++;
+      } catch (err) {
+        await client.query("ROLLBACK");
+        throw err;
+      }
+    }
+  } finally {
+    client.release();
+  }
+  return result;
+}
+
+async function persistOne(client: PoolClient, ev: DecodedEvent): Promise<boolean> {
+  if (ev.stage === "opened") {
+    await client.query(
+      `INSERT INTO pacts (pact_id, mode, buyer, seller, resource_url, cap, condition_hash, condition, metered,
+                          silence, state, verdict_deadline, settle_deadline)
+       VALUES ($1, 'escrow', $2, $3, '', $4, $5, '{}'::jsonb, $6, $7, 'funded', $8, $9)
+       ON CONFLICT (pact_id) DO NOTHING`,
+      [ev.pactId, ev.buyer, ev.seller, stroopsToDecimal(ev.cap!), ev.conditionHash, ev.metered, ev.silence, ev.verdictDeadline, ev.settleDeadline],
+    );
+  } else {
+    const known = await client.query("SELECT 1 FROM pacts WHERE pact_id = $1", [ev.pactId]);
+    if (known.rowCount === 0) return false;
+  }
+
+  const inserted = await client.query(
+    `INSERT INTO pact_events (pact_id, stage, tx_hash, ledger, data) VALUES ($1, $2, $3, $4, $5)
+     ON CONFLICT (tx_hash, stage, pact_id) DO NOTHING`,
+    [ev.pactId, ev.stage, ev.txHash, ev.ledger, JSON.stringify(ev.data)],
+  );
+  if (inserted.rowCount === 0) return true; // already indexed
+
+  if (ev.stage === "verdict") {
+    await client.query(
+      `INSERT INTO verdicts (envelope_hash, pact_id, milestone, verdict, amount, envelope, attested)
+       VALUES ($1, $2, 'delivery', $3, $4, $5, true) ON CONFLICT DO NOTHING`,
+      [ev.envelopeHash, ev.pactId, ev.verdict, stroopsToDecimal(ev.amount!), JSON.stringify(ev.data)],
+    );
+  }
+
+  if (ev.pactState && ev.stage !== "opened") {
+    const refund = ev.stage === "refunded";
+    await client.query(
+      `UPDATE pacts SET state = $2,
+              to_seller = CASE WHEN $5 THEN to_seller ELSE COALESCE($3::numeric, to_seller) END,
+              to_buyer  = CASE WHEN $5 THEN to_buyer + COALESCE($4::numeric, 0) ELSE COALESCE($4::numeric, to_buyer) END,
+              updated_at = now()
+        WHERE pact_id = $1`,
+      [
+        ev.pactId,
+        ev.pactState,
+        ev.toSeller !== undefined ? stroopsToDecimal(ev.toSeller) : null,
+        ev.toBuyer !== undefined ? stroopsToDecimal(ev.toBuyer) : null,
+        refund,
+      ],
+    );
+  }
+
+  const transition = terminalTransition(ev);
+  if (transition) {
+    // A settle or release carries the envelope of the pact's delivery verdict, when there is one.
+    const envelopeHash =
+      transition === "settled" || transition === "released"
+        ? ((
+            await client.query<{ envelope_hash: string }>(
+              "SELECT envelope_hash FROM verdicts WHERE pact_id = $1 AND milestone = 'delivery' AND attested",
+              [ev.pactId],
+            )
+          ).rows[0]?.envelope_hash ?? null)
+        : null;
+    const leafInput = {
+      pactId: ev.pactId,
+      transition,
+      toSeller: ev.toSeller ?? "0",
+      toBuyer: ev.toBuyer ?? "0",
+      envelopeHash: ev.stage === "meter_closed" ? null : envelopeHash,
+      ledger: ev.ledger,
+    };
+    await client.query(
+      `INSERT INTO receipts (leaf, pact_id, transition, to_seller_stroops, to_buyer_stroops, envelope_hash, ledger)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (leaf) DO NOTHING`,
+      [computeReceiptLeaf(leafInput), ev.pactId, transition, leafInput.toSeller, leafInput.toBuyer, leafInput.envelopeHash, ev.ledger],
+    );
+  }
+  return true;
+}
+
+function terminalTransition(ev: DecodedEvent): Transition | null {
+  switch (ev.stage) {
+    case "settled":
+    case "meter_closed":
+      return "settled";
+    case "released":
+      return "released";
+    case "refunded":
+      return "refunded";
+    default:
+      return null;
+  }
+}
+
+export class OutsideRetentionError extends Error {
+  constructor(public readonly source: string, public readonly cursor: number, public readonly oldestLedger: number) {
+    super(
+      `${source}: cursor ${cursor} is older than the RPC's oldest ledger ${oldestLedger}. ` +
+        "Events in between would be lost; backfill them from a history source before syncing (ROADMAP S-03).",
+    );
+    this.name = "OutsideRetentionError";
+  }
 }
 
 export interface SyncResult {
+  source: string;
   fromLedger: number;
   toLedger: number;
-  indexedCount: number;
+  indexed: number;
+  skipped: number;
 }
 
-/**
- * Persists decoded events idempotently into Postgres.
- * Re-running sync over the same ledgers will not mutate state or duplicate rows.
- */
-export async function persistEvents(events: DecodedEvent[]): Promise<number> {
-  if (events.length === 0) return 0;
-  const pool = db();
-
-  let count = 0;
-
-  for (const ev of events) {
-    await pool.query("BEGIN");
-    try {
-      if (ev.stage === "opened" && ev.buyer && ev.seller) {
-        await pool.query(
-          `INSERT INTO pacts (
-             pact_id, mode, buyer, seller, resource_url, cap, condition_hash,
-             condition, metered, silence, state, verdict_deadline, settle_deadline,
-             to_seller, to_buyer
-           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-           ON CONFLICT (pact_id) DO UPDATE SET
-             state = COALESCE(EXCLUDED.state, pacts.state),
-             updated_at = now()`,
-          [
-            ev.pactId,
-            ev.mode ?? "escrow",
-            ev.buyer,
-            ev.seller,
-            ev.resourceUrl ?? "",
-            ev.cap ?? "0",
-            ev.conditionHash ?? "0000000000000000000000000000000000000000000000000000000000000000",
-            JSON.stringify(ev.condition ?? {}),
-            Boolean(ev.metered),
-            ev.silence ?? null,
-            ev.pactState ?? "funded",
-            ev.verdictDeadline ?? null,
-            ev.settleDeadline ?? null,
-            ev.toSeller ?? "0",
-            ev.toBuyer ?? "0",
-          ]
-        );
-      } else if (ev.pactState || ev.toSeller || ev.toBuyer) {
-        await pool.query(
-          `UPDATE pacts
-           SET state = COALESCE($2, state),
-               to_seller = GREATEST(to_seller, $3::numeric),
-               to_buyer = GREATEST(to_buyer, $4::numeric),
-               updated_at = now()
-           WHERE pact_id = $1`,
-          [
-            ev.pactId,
-            ev.pactState ?? null,
-            ev.toSeller ?? "0",
-            ev.toBuyer ?? "0",
-          ]
-        );
-      }
-
-      // 2. Insert event record (idempotent via unique constraint)
-      await pool.query(
-        `INSERT INTO pact_events (pact_id, stage, tx_hash, ledger, data)
-         VALUES ($1, $2, $3, $4, $5)
-         ON CONFLICT (tx_hash, stage, pact_id) DO NOTHING`,
-        [ev.pactId, ev.stage, ev.txHash, ev.ledger, JSON.stringify(ev.data)]
-      );
-
-      // 3. Insert verdict if present
-      if (ev.stage === "verdict" && ev.envelopeHash) {
-        await pool.query(
-          `INSERT INTO verdicts (envelope_hash, pact_id, milestone, verdict, amount, envelope, attested)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)
-           ON CONFLICT (envelope_hash) DO NOTHING`,
-          [
-            ev.envelopeHash,
-            ev.pactId,
-            String(ev.data.milestone ?? "delivery"),
-            String(ev.data.verdict ?? "ALLOW"),
-            ev.data.amount != null ? String(ev.data.amount) : null,
-            JSON.stringify(ev.data),
-            true,
-          ]
-        );
-      }
-
-      // 4. If terminal transition, insert pending receipt leaf
-      const isTerminal = ["paid", "settled", "released", "refunded"].includes(ev.stage);
-      if (isTerminal) {
-        const transition = ev.stage as Transition;
-        const leaf = computeReceiptLeaf({
-          pactId: ev.pactId,
-          transition,
-          toSeller: ev.toSeller ?? "0",
-          toBuyer: ev.toBuyer ?? "0",
-          envelopeHash: ev.envelopeHash,
-          ledger: ev.ledger,
-        });
-
-        await pool.query(
-          `INSERT INTO receipts (leaf, pact_id, transition, batch_id, proof)
-           VALUES ($1, $2, $3, null, null)
-           ON CONFLICT (leaf) DO NOTHING`,
-          [leaf, ev.pactId, transition]
-        );
-      }
-
-      // 5. Advance cursor
-      await advance(ev.source, ev.ledger);
-
-      await pool.query("COMMIT");
-      count++;
-    } catch (err) {
-      await pool.query("ROLLBACK");
-      throw err;
-    }
+/** One indexing pass over every source, from its cursor to the RPC's latest ledger. */
+export async function sync(config: ChainConfig = chainConfig()): Promise<SyncResult[]> {
+  const health = await server(config).getHealth();
+  const results: SyncResult[] = [];
+  for (const source of sources(config)) {
+    const cursor = await getCursor(source.name, 0);
+    // Re-read the cursor's own ledger: writes are idempotent, so a partly indexed ledger is safe.
+    const fromLedger = cursor > 0 ? cursor : (config.startLedger ?? health.oldestLedger);
+    if (fromLedger < health.oldestLedger) throw new OutsideRetentionError(source.name, fromLedger, health.oldestLedger);
+    const page = await fetchEvents(source, fromLedger, config);
+    const persisted = await persistEvents(page.events);
+    await advance(source.name, page.latestLedger);
+    results.push({ source: source.name, fromLedger, toLedger: page.latestLedger, ...persisted });
   }
-
-  return count;
-}
-
-/**
- * Runs indexer synchronization for one or all sources.
- */
-export async function sync(options: SyncOptions = {}): Promise<SyncResult> {
-  const source = options.source ?? "pact";
-  const fromLedger = options.fromLedger ?? (await getCursor(source, 0));
-  const toLedger = options.toLedger ?? fromLedger + 100;
-
-  const events = options.events ?? (await fetchEvents(source, fromLedger, toLedger));
-  const indexedCount = await persistEvents(events);
-
-  if (events.length > 0) {
-    const maxLedger = Math.max(...events.map((e) => e.ledger));
-    await advance(source, maxLedger);
-  }
-
-  return {
-    fromLedger,
-    toLedger,
-    indexedCount,
-  };
+  return results;
 }

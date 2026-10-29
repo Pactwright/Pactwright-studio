@@ -7,7 +7,7 @@
 | | |
 |---|---|
 | Last updated | 2026-10-29 |
-| Progress | **15 / 20 tasks (75%)** |
+| Progress | **16 / 20 tasks (80%)** |
 
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (ADR) · owner `core`/`wave` · size `T`/`M`/`H`.
 
@@ -16,7 +16,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (ADR) · 
 | Section | Tasks | Done | % |
 |---|---|---|---|
 | Foundations (this repo) | 6 | 4 | 67% |
-| Phase 5 — Studio MVP | 10 | 7 | 70% |
+| Phase 5 — Studio MVP | 10 | 8 | 80% |
 | Phase 7 — v1 | 2 | 2 | 100% |
 | Phase 9 — v2 | 1 | 1 | 100% |
 | Cross-cutting | 1 | 1 | 100% |
@@ -37,9 +37,9 @@ Repo-level setup tasks.
 Public pact pages and certificates backed by an indexer and anchorer.
 
 - [x] **S-01** Next.js scaffold, `db.ts`, `001_core.sql`, `migrations.yml` — wave · M · F-02 · ARCH §7.3 (#18, 2026-10-28)
-- [~] **S-02** Indexer: `getEvents`, cursor, idempotent writes for `pact`, facilitator and `RefundVault` events — wave · H · S-01, C-17 — reopened: `fetchEvents` returns `[]`; nothing reads Stellar RPC yet
-- [x] **S-03** Indexer backfill from a history source + lag alert at 50% of RPC retention — wave · H · S-02 · FR-R4 (#19, 2026-10-28)
-- [~] **S-04** Anchorer: reconcile from chain → batch (≤ max size, ≥ min interval) → `anchor_batch` → proofs — core · H · S-02, C-20 · FR-R1, FR-R2 — reopened: no `anchor_batch` transaction is sent; a placeholder `tx_anchor_<id>` is stored, and it assumes shards that ReceiptAnchor v0.2.0 doesn't have
+- [x] **S-02** Indexer: `getEvents`, cursor, idempotent writes for `pact`, facilitator and `RefundVault` events — wave · H · S-01, C-17 (#25, 2026-10-29)
+- [~] **S-03** Indexer backfill from a history source + lag alert at 50% of RPC retention — wave · H · S-02 · FR-R4 — reopened: backfill advanced the cursor over gaps without fetching anything; `sync` now stops with OutsideRetentionError instead. A history-source backfill is still to do
+- [x] **S-04** Anchorer: reconcile from chain → batch (≤ max size, ≥ min interval) → `anchor_batch` → proofs — core · H · S-02, C-20 · FR-R1, FR-R2 (#25, 2026-10-29)
 - [x] **S-05** API: `/api/pacts/:id`, `/api/certificates/:id` (`pending`/`anchored`) — wave · M · S-04 (#18, 2026-10-28)
 - [x] **S-06** Pact timeline page — wave · M · S-05 · FR-I4 (#18, 2026-10-28)
 - [x] **S-07** Certificate viewer: offline `verifyReceipt()` + on-chain `verify_receipt` — wave · M · S-05 · FR-R3 (#18, 2026-10-28)
@@ -66,6 +66,7 @@ Dashboards.
 
 | Date | PR / change | Tasks | Summary |
 |---|---|---|---|
+| 2026-10-29 | #25 | S-02, S-04 → `[x]`; S-03 → `[~]` | Indexer reads real `pact` and RefundVault events via RPC `getEvents` (one cursor per source, one DB transaction per event, idempotent). Receipt leaves now match the contract byte for byte (they were colon-joined text before), tested against its vectors. Anchorer sends real `anchor_batch` with the ReceiptAnchor admin key, records each plan first and reconciles plans with the chain. Live testnet run: 9 pacts indexed, batch 1 anchored (tx `be51068e…`), every proof verified by ReceiptAnchor's `verify_receipt`; rerun changed nothing. Migration 003 drops shards (v0.2.0 has none) and keeps leaf inputs per receipt; the migration runner applies each file once. Cron routes fail closed without CRON_SECRET. Backfill no longer skips gaps. |
 | 2026-10-29 | #24 | — (L-01, master) | README links the 7 MVP scenarios run on testnet by Pactwright-Kit's e2e; these are the first pacts for the indexer and anchorer to pick up. |
 | 2026-10-29 | #24 | S-02, S-04, S-10 → `[~]` | Reopened tasks whose done-criteria weren't met: the indexer doesn't read the chain, the anchorer doesn't anchor, and Studio isn't deployed. The real work follows in the next PRs. |
 | 2026-10-28 | #23 | F-06, F-07 → `[x]` | README rewritten to explain Studio: why it exists, who uses it, how a receipt becomes provable (flowchart), an honest status table (RPC `fetchEvents` and on-chain `anchor_batch` are still stubs; not deployed), pages and API, local run, deploy, data model, FAQ, and a full License section. Logo assets added. CODEOWNERS, Scorecard and branch protection are live. |

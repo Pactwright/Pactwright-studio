@@ -10,13 +10,15 @@
     "test": "vitest run",
     "e2e": "playwright test",
     "db:migrate": "node ../../migrations/migrate.mjs",
-    "db:seed": "node ../../migrations/seed.mjs"
+    "db:seed": "node ../../migrations/seed.mjs",
+    "live:testnet": "vitest run --config vitest.live.config.ts"
   },
   "dependencies": {
+    "@stellar/stellar-sdk": "^16.4.1",
     "next": "^16.0.0",
+    "pg": "^8.16.0",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0",
-    "pg": "^8.16.0"
+    "react-dom": "^19.2.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.56.0",

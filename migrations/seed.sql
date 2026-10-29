@@ -60,9 +60,8 @@ insert into verdicts (envelope_hash, pact_id, milestone, verdict, amount, envelo
   true
 ) on conflict (envelope_hash) do nothing;
 
-insert into receipt_batches (batch_id, shard_id, root, leaf_count, anchor_tx, anchored_at) values (
+insert into receipt_batches (batch_id, root, leaf_count, anchor_tx, anchored_at) values (
   1,
-  0,
   'dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd',
   1,
   'tx_anchor_batch_001',
