@@ -1,7 +1,7 @@
-# Testnet hosting for Studio on Render (ROADMAP S-10, studio#26): the web app, a managed
-# Postgres, and the two cron jobs that call /api/sync (every 5 minutes) and /api/anchor
-# (hourly). Secrets are `sync: false`: Render asks for them when the Blueprint is created and
-# keeps them in its secret store. Never put a value for them in this file.
+# Testnet hosting for Studio on Render's Free tier (ROADMAP S-10, studio#26): the web app
+# and a managed Postgres without requiring a credit card.
+# Indexer sync and anchor tasks are automated via GitHub Actions (.github/workflows/studio-cron.yml).
+# Secrets are `sync: false`: Render asks for them when the Blueprint is created.
 # Spec: https://render.com/docs/blueprint-spec
 projects:
   - name: pactwright-studio
@@ -9,18 +9,17 @@ projects:
       - name: testnet
         databases:
           - name: pactwright-studio-testnet-db
-            plan: 0.1c-256mb
+            plan: free
             databaseName: pactwright
-            postgresMajorVersion: "17"
+            postgresMajorVersion: "16"
 
         services:
           - type: web
             name: pactwright-studio-testnet
             runtime: node
-            plan: 0.5c-512mb
+            plan: free
             buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm build
-            preDeployCommand: pnpm db:migrate
-            startCommand: pnpm --filter web start
+            startCommand: pnpm db:migrate && pnpm --filter web start
             healthCheckPath: /verify
             autoDeployTrigger: checksPass
             envVars:
@@ -53,44 +52,6 @@ projects:
               # ReceiptAnchor admin key (testnet only; refused on pubnet).
               - key: ANCHORER_SECRET
                 sync: false
-              # Shared with the cron jobs below; the cron routes refuse to run without it.
+              # Secret shared with the cron runner; the cron routes refuse to run without it.
               - key: CRON_SECRET
                 generateValue: true
-
-          - type: cron
-            name: pactwright-studio-testnet-sync
-            runtime: node
-            plan: 0.5c-512mb
-            schedule: "*/5 * * * *"
-            buildCommand: "true"
-            startCommand: 'curl -fsS -H "Authorization: Bearer $CRON_SECRET" "http://$STUDIO_HOSTPORT/api/sync"'
-            envVars:
-              - key: STUDIO_HOSTPORT
-                fromService:
-                  name: pactwright-studio-testnet
-                  type: web
-                  property: hostport
-              - key: CRON_SECRET
-                fromService:
-                  name: pactwright-studio-testnet
-                  type: web
-                  envVarKey: CRON_SECRET
-
-          - type: cron
-            name: pactwright-studio-testnet-anchor
-            runtime: node
-            plan: 0.5c-512mb
-            schedule: "0 * * * *"
-            buildCommand: "true"
-            startCommand: 'curl -fsS -H "Authorization: Bearer $CRON_SECRET" "http://$STUDIO_HOSTPORT/api/anchor"'
-            envVars:
-              - key: STUDIO_HOSTPORT
-                fromService:
-                  name: pactwright-studio-testnet
-                  type: web
-                  property: hostport
-              - key: CRON_SECRET
-                fromService:
-                  name: pactwright-studio-testnet
-                  type: web
-                  envVarKey: CRON_SECRET
