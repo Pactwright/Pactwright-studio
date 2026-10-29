@@ -16,6 +16,7 @@ describe("API data models & queries", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    process.env.RECEIPT_ANCHOR_ID = "CAEO5GBC3ULRC5RYBSCSOXLNXHU2HZAHNW5HY5LZM3DIPFMX357ILNJ2";
     vi.mocked(db).mockReturnValue({
       query: mockQuery,
     } as unknown as ReturnType<typeof db>);
@@ -91,7 +92,9 @@ describe("API data models & queries", () => {
         proof: ["dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"],
         to_seller: "10.0000000",
         to_buyer: "0.0000000",
-        shard_id: "0",
+        to_seller_stroops: "100000000",
+        to_buyer_stroops: "0",
+        ledger: 600,
         root: "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
         anchor_tx: "tx_anchor_1",
         envelope_hash: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
@@ -117,6 +120,7 @@ describe("API data models & queries", () => {
       expect(cert?.root).toBe(mockReceiptRow.root);
       expect(cert?.batchId).toBe(1);
       expect(cert?.proof).toEqual(mockReceiptRow.proof);
+      expect(cert?.leafInput).toMatchObject({ toSellerStroops: "100000000", ledger: 600 });
       expect(cert?.txs).toHaveLength(2);
     });
 
@@ -129,7 +133,9 @@ describe("API data models & queries", () => {
         proof: null,
         to_seller: "0.0000000",
         to_buyer: "2.5000000",
-        shard_id: null,
+        to_seller_stroops: "0",
+        to_buyer_stroops: "25000000",
+        ledger: 700,
         root: null,
         anchor_tx: null,
         envelope_hash: null,

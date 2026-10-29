@@ -402,7 +402,7 @@ export const CertificateSchema = z.object({
   pactId: Hex64, transition: TransitionSchema, toSeller: z.string(), toBuyer: z.string(),
   envelopeHash: Hex64.optional(), leaf: Hex64,
   status: z.enum(["pending", "anchored"]),
-  proof: z.array(Hex64).optional(), shardId: z.number().int().optional(),
+  proof: z.array(Hex64).optional(),
   batchId: z.number().int().optional(), root: Hex64.optional(),
   receiptAnchor: StellarAddress, txs: z.array(z.object({ stage: z.string(), hash: z.string() })),
 });
@@ -456,7 +456,6 @@ create table verdicts (
 
 create table receipt_batches (
   batch_id        bigint primary key,
-  shard_id        bigint not null,
   root            char(64) not null,
   leaf_count      integer not null,
   anchor_tx       text not null,

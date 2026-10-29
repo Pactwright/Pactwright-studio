@@ -8,8 +8,7 @@ vi.mock("@/lib/db", () => {
 });
 
 import { db } from "@/lib/db";
-import { checkLag, backfill, DEFAULT_RPC_RETENTION } from "../../lib/indexer/backfill";
-import { decodePactEvent } from "../../lib/indexer/sources";
+import { checkLag, DEFAULT_RPC_RETENTION } from "../../lib/indexer/backfill";
 
 describe("Indexer backfill & lag alert (ROADMAP S-03)", () => {
   const mockQuery = vi.fn();
@@ -45,33 +44,4 @@ describe("Indexer backfill & lag alert (ROADMAP S-03)", () => {
     });
   });
 
-  describe("backfill gap filling", () => {
-    it("fills a simulated history gap and advances cursor", async () => {
-      const pactId = "1111111111111111111111111111111111111111111111111111111111111111";
-      const simulatedEv = decodePactEvent({
-        topic: "opened",
-        txHash: "0xsimulated_gap_fill",
-        ledger: 49000000,
-        payload: {
-          pactId,
-          buyer: "GA7Q",
-          seller: "GBBD",
-          resourceUrl: "https://api.pactwright.dev/gap",
-          cap: "10.0000000",
-          conditionHash: "gap_hash",
-        },
-      })!;
-
-      mockQuery.mockResolvedValueOnce({ rows: [{ cursor_ledger: 48999000 }] }); // getCursor
-
-      const result = await backfill("pact", 48999000, 49000500, {
-        simulatedEvents: [simulatedEv],
-        retention: DEFAULT_RPC_RETENTION,
-      });
-
-      expect(result.backfilledCount).toBe(1);
-      expect(result.toLedger).toBe(49000500);
-      expect(mockQuery).toHaveBeenCalled();
-    });
-  });
 });

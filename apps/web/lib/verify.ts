@@ -12,29 +12,55 @@ export function sha256(data: Buffer | Uint8Array | string): Buffer {
   return createHash("sha256").update(data).digest();
 }
 
+const RECEIPT_DOMAIN = Buffer.from("pactwright-receipt-v1", "utf8");
+const TRANSITION_CODE: Record<Transition, number> = { paid: 1, settled: 2, released: 3, refunded: 4 };
+
+/** Big-endian two's-complement i128, as the contract encodes it. */
+function i128be(value: bigint): Buffer {
+  const out = Buffer.alloc(16);
+  out.writeBigInt64BE(value >> 64n, 0);
+  out.writeBigUInt64BE(value & 0xffffffffffffffffn, 8);
+  return out;
+}
+
 /**
- * Computes terminal receipt leaf hash.
- * Leaf = sha256("pactwright-receipt-v1:" || pact_id || transition || to_seller || to_buyer || envelope_hash || ledger)
+ * Terminal receipt leaf, byte for byte as `hashing::receipt_leaf` in the pact contract
+ * (pinned by Pactwright-contracts/test-vectors/receipt_leaf.json):
+ *
+ * sha256("pactwright-receipt-v1" ‖ pact_id ‖ transition_u32 ‖ to_seller_i128 ‖ to_buyer_i128 ‖
+ *        (envelope_hash or 32 zero bytes) ‖ ledger_u32), integers big-endian, amounts in stroops.
  */
 export function computeReceiptLeaf(params: {
   pactId: string;
   transition: Transition;
-  toSeller: string;
-  toBuyer: string;
-  envelopeHash?: string;
+  /** Stroops. */
+  toSeller: bigint | string;
+  /** Stroops. */
+  toBuyer: bigint | string;
+  envelopeHash?: string | null;
   ledger: number;
 }): string {
-  const code = { paid: 1, settled: 2, released: 3, refunded: 4 }[params.transition] ?? 1;
-  const parts = [
-    "pactwright-receipt-v1",
-    params.pactId.trim().toLowerCase(),
-    String(code),
-    params.toSeller.trim(),
-    params.toBuyer.trim(),
-    (params.envelopeHash?.trim().toLowerCase() || "0000000000000000000000000000000000000000000000000000000000000000"),
-    String(params.ledger),
-  ];
-  return createHash("sha256").update(parts.join(":")).digest("hex");
+  const pactId = Buffer.from(params.pactId.trim().toLowerCase(), "hex");
+  if (pactId.length !== 32) throw new Error("pactId must be 32 bytes of hex");
+  const envelope = params.envelopeHash ? Buffer.from(params.envelopeHash.trim().toLowerCase(), "hex") : Buffer.alloc(32);
+  if (envelope.length !== 32) throw new Error("envelopeHash must be 32 bytes of hex");
+  const transition = Buffer.alloc(4);
+  transition.writeUInt32BE(TRANSITION_CODE[params.transition], 0);
+  const ledger = Buffer.alloc(4);
+  ledger.writeUInt32BE(params.ledger, 0);
+  return createHash("sha256")
+    .update(
+      Buffer.concat([
+        RECEIPT_DOMAIN,
+        pactId,
+        transition,
+        i128be(BigInt(params.toSeller)),
+        i128be(BigInt(params.toBuyer)),
+        envelope,
+        ledger,
+      ]),
+    )
+    .digest("hex");
 }
 
 /**

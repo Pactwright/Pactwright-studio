@@ -11,9 +11,11 @@ export interface CertificateResponse {
   toBuyer: string;
   envelopeHash?: string;
   leaf: string;
+  /** The leaf's exact inputs, so anyone can recompute `leaf` (amounts in stroops). */
+  leafInput: { transition: string; toSellerStroops: string; toBuyerStroops: string; envelopeHash: string | null; ledger: number | null };
   status: "pending" | "anchored";
   proof?: string[];
-  shardId?: number;
+  /** ReceiptAnchor batch id: pass it with `leaf` and `proof` to `verify_receipt`. */
   batchId?: number;
   root?: string;
   receiptAnchor: string;
@@ -29,16 +31,17 @@ export async function getCertificateById(id: string): Promise<CertificateRespons
        r.transition,
        r.batch_id,
        r.proof,
+       r.to_seller_stroops,
+       r.to_buyer_stroops,
+       r.envelope_hash,
+       r.ledger,
        p.to_seller,
        p.to_buyer,
-       b.shard_id,
        b.root,
-       b.anchor_tx,
-       v.envelope_hash
+       b.anchor_tx
      FROM receipts r
      JOIN pacts p ON r.pact_id = p.pact_id
      LEFT JOIN receipt_batches b ON r.batch_id = b.batch_id
-     LEFT JOIN verdicts v ON p.pact_id = v.pact_id
      WHERE r.pact_id = $1 OR r.leaf = $1
      ORDER BY (r.batch_id IS NOT NULL) DESC, r.leaf ASC
      LIMIT 1`,
@@ -66,17 +69,27 @@ export async function getCertificateById(id: string): Promise<CertificateRespons
     toBuyer: String(row.to_buyer),
     envelopeHash: row.envelope_hash ? row.envelope_hash.trim() : undefined,
     leaf: row.leaf.trim(),
+    leafInput: {
+      transition: row.transition,
+      toSellerStroops: row.to_seller_stroops != null ? String(row.to_seller_stroops) : "0",
+      toBuyerStroops: row.to_buyer_stroops != null ? String(row.to_buyer_stroops) : "0",
+      envelopeHash: row.envelope_hash ? row.envelope_hash.trim() : null,
+      ledger: row.ledger != null ? Number(row.ledger) : null,
+    },
     status: isAnchored ? "anchored" : "pending",
     proof: isAnchored ? proof : undefined,
-    shardId: isAnchored && row.shard_id != null ? Number(row.shard_id) : undefined,
     batchId: isAnchored && row.batch_id != null ? Number(row.batch_id) : undefined,
     root: isAnchored && row.root ? row.root.trim() : undefined,
-    receiptAnchor:
-      process.env.RECEIPT_ANCHOR_CONTRACT_ID ||
-      "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    receiptAnchor: receiptAnchorId(),
     txs: eventsResult.rows.map((e) => ({
       stage: e.stage,
       hash: e.tx_hash,
     })),
   };
+}
+
+function receiptAnchorId(): string {
+  const id = process.env.RECEIPT_ANCHOR_ID?.trim();
+  if (!id) throw new Error("RECEIPT_ANCHOR_ID is not set");
+  return id;
 }

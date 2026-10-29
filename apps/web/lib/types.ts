@@ -49,11 +49,12 @@ export interface VerdictRow {
 
 export interface ReceiptBatchRow {
   batch_id: number;
-  shard_id: number;
   root: string;
   leaf_count: number;
-  anchor_tx: string;
+  /** Null only for a batch recovered from the chain after a crash. */
+  anchor_tx: string | null;
   anchored_at: Date;
+  anchored_ledger: number | null;
 }
 
 export interface ReceiptRow {

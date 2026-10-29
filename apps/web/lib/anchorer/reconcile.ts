@@ -1,68 +1,72 @@
 /**
- * Reconcile DB with on-chain batches to recover from crashes between submit and DB write. ROADMAP S-04.
+ * Reconcile anchoring plans with the chain, so a crash between sending `anchor_batch` and saving
+ * its result never anchors a batch twice or loses one. ROADMAP S-04.
  */
 import { db } from "@/lib/db";
+import { readContract, type ChainConfig } from "@/lib/chain";
 import { buildMerkleTree } from "@/lib/anchorer/batch";
+import { xdr } from "@stellar/stellar-sdk";
+
+/** `anchor_batch` transactions expire after 60 s; a younger plan may still land. */
+const PLAN_SETTLE_SECONDS = 120;
 
 export interface ReconcileResult {
+  /** Plans found on-chain and saved now. */
   recoveredBatches: number;
   recoveredReceipts: number;
+  /** Plans whose transaction never landed; their leaves go back to pending. */
+  droppedPlans: number;
+  /** A plan is too recent to judge: its transaction may still land. Anchoring waits. */
+  inFlight: boolean;
 }
 
-/**
- * Reconciles receipt_batches and receipts.
- * If a batch was created or submitted to chain, but the process crashed before
- * updating receipts with their batch_id and proofs, reconcile restores them.
- */
-export async function reconcile(): Promise<ReconcileResult> {
+/** Reads ReceiptAnchor's batch count and settles every open plan against it. */
+export async function reconcile(config: ChainConfig, source: string): Promise<ReconcileResult & { chainBatchCount: number }> {
   const pool = db();
+  const chainBatchCount = Number(await readContract(config, source, config.receiptAnchorId, "get_batch_count", []));
+  const result = { recoveredBatches: 0, recoveredReceipts: 0, droppedPlans: 0, inFlight: false, chainBatchCount };
 
-  const mismatchedBatches = await pool.query<{
-    batch_id: string;
-    root: string;
-    leaf_count: number;
-    assigned_count: string;
-  }>(
-    `SELECT b.batch_id, b.root, b.leaf_count, COUNT(r.leaf) as assigned_count
-     FROM receipt_batches b
-     LEFT JOIN receipts r ON b.batch_id = r.batch_id
-     GROUP BY b.batch_id, b.root, b.leaf_count
-     HAVING COUNT(r.leaf) < b.leaf_count`
+  const plans = await pool.query<{ batch_id: string; root: string; leaves: string[]; age_seconds: number }>(
+    "SELECT batch_id, root, leaves, EXTRACT(EPOCH FROM now() - created_at)::int AS age_seconds FROM anchor_plans ORDER BY batch_id",
   );
-
-  let recoveredBatches = 0;
-  let recoveredReceipts = 0;
-
-  for (const batch of mismatchedBatches.rows) {
-    const batchId = Number(batch.batch_id);
-    const expectedRoot = batch.root.trim().toLowerCase();
-
-    // Look for pending unanchored receipts
-    const pendingRes = await pool.query<{ leaf: string }>(
-      "SELECT leaf FROM receipts WHERE batch_id IS NULL ORDER BY leaf ASC"
-    );
-
-    if (pendingRes.rows.length === 0) continue;
-
-    const pendingLeaves = pendingRes.rows.map((r) => r.leaf.trim());
-    const candidateLeaves = pendingLeaves.slice(0, batch.leaf_count);
-
+  for (const plan of plans.rows) {
+    const batchId = Number(plan.batch_id);
+    if (batchId > chainBatchCount && plan.age_seconds < PLAN_SETTLE_SECONDS) {
+      result.inFlight = true;
+      continue;
+    }
+    const onChain =
+      batchId <= chainBatchCount
+        ? ((await readContract(config, source, config.receiptAnchorId, "get_batch", [
+            xdr.ScVal.scvU64(new xdr.Uint64(BigInt(batchId))),
+          ])) as { root: Uint8Array; anchored_ledger: number })
+        : null;
+    const client = await pool.connect();
     try {
-      const { root, proofs } = buildMerkleTree(candidateLeaves);
-      if (root.toLowerCase() === expectedRoot) {
-        for (const [leaf, proof] of proofs.entries()) {
-          await pool.query(
-            "UPDATE receipts SET batch_id = $1, proof = $2 WHERE leaf = $3",
-            [batchId, JSON.stringify(proof), leaf]
-          );
-          recoveredReceipts++;
+      await client.query("BEGIN");
+      if (onChain && Buffer.from(onChain.root).toString("hex") === plan.root.trim()) {
+        const { proofs } = buildMerkleTree(plan.leaves);
+        await client.query(
+          `INSERT INTO receipt_batches (batch_id, root, leaf_count, anchor_tx, anchored_at, anchored_ledger)
+           VALUES ($1, $2, $3, null, now(), $4) ON CONFLICT (batch_id) DO NOTHING`,
+          [batchId, plan.root.trim(), plan.leaves.length, onChain.anchored_ledger],
+        );
+        for (const [leaf, proof] of proofs) {
+          await client.query("UPDATE receipts SET batch_id = $1, proof = $2 WHERE leaf = $3", [batchId, JSON.stringify(proof), leaf]);
+          result.recoveredReceipts++;
         }
-        recoveredBatches++;
+        result.recoveredBatches++;
+      } else {
+        result.droppedPlans++;
       }
-    } catch {
-      // Merkle build failed on candidate slice; continue checking
+      await client.query("DELETE FROM anchor_plans WHERE batch_id = $1", [batchId]);
+      await client.query("COMMIT");
+    } catch (err) {
+      await client.query("ROLLBACK");
+      throw err;
+    } finally {
+      client.release();
     }
   }
-
-  return { recoveredBatches, recoveredReceipts };
+  return result;
 }
