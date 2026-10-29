@@ -6,6 +6,7 @@ import {
   probeVerifierErrorRate,
   evaluateSystemHealth,
 } from "../../lib/ops/monitoring";
+import { measureIndexerHealth } from "../../lib/ops/measure";
 
 describe("Ops monitoring and alerting (ROADMAP XC-03)", () => {
   it("fires alert when sponsor account balance drops below minimum threshold", () => {
@@ -70,5 +71,32 @@ describe("Ops monitoring and alerting (ROADMAP XC-03)", () => {
 
     expect(degradedReport.healthy).toBe(false);
     expect(degradedReport.alerts.length).toBe(4);
+  });
+
+  it("runs only the probes whose metrics were measured", () => {
+    const report = evaluateSystemHealth({ indexerLagLedgers: 10, rpcRetentionLedgers: 120960, pendingCertificatesCount: 0 });
+    expect(report.probes.map((p) => p.name)).toEqual(["indexer_lag", "pending_certificates"]);
+    expect(report.healthy).toBe(true);
+  });
+
+  it("measures lag from the slowest cursor and retention from the RPC window", async () => {
+    const metrics = await measureIndexerHealth({
+      ledgers: async () => ({ latestLedger: 200_000, oldestLedger: 79_041 }),
+      cursors: async () => [199_990, 150_000],
+      pendingReceipts: async () => 3,
+    });
+    expect(metrics).toEqual({ indexerLagLedgers: 50_000, rpcRetentionLedgers: 120_960, pendingCertificatesCount: 3 });
+    expect(evaluateSystemHealth(metrics).healthy).toBe(true);
+  });
+
+  it("counts a never-synced source from INDEX_START_LEDGER, so a stale start alerts", async () => {
+    const metrics = await measureIndexerHealth({
+      ledgers: async () => ({ latestLedger: 200_000, oldestLedger: 79_041 }),
+      cursors: async () => [0],
+      pendingReceipts: async () => 0,
+      startLedger: 100_000,
+    });
+    expect(metrics.indexerLagLedgers).toBe(100_000);
+    expect(evaluateSystemHealth(metrics).healthy).toBe(false);
   });
 });

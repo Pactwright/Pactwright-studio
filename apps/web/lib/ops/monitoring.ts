@@ -3,13 +3,14 @@
  * Probes: sponsor balance, indexer lag, pending certificates, verifier error rate.
  */
 
+/** Probes run only for the metrics that were measured; nothing is reported on made-up values. */
 export interface SystemMetrics {
-  sponsorBalanceXlm: number;
-  indexerLagLedgers: number;
+  sponsorBalanceXlm?: number;
+  indexerLagLedgers?: number;
   rpcRetentionLedgers?: number;
-  pendingCertificatesCount: number;
-  verifierTotalRequests: number;
-  verifierErrorRequests: number;
+  pendingCertificatesCount?: number;
+  verifierTotalRequests?: number;
+  verifierErrorRequests?: number;
 }
 
 export interface ProbeResult {
@@ -103,12 +104,17 @@ export function probeVerifierErrorRate(
  * Runs all system health probes and gathers triggered alerts.
  */
 export function evaluateSystemHealth(metrics: SystemMetrics): SystemHealthReport {
-  const probes = [
-    probeSponsorBalance(metrics.sponsorBalanceXlm),
-    probeIndexerLag(metrics.indexerLagLedgers, metrics.rpcRetentionLedgers),
-    probePendingCertificates(metrics.pendingCertificatesCount),
-    probeVerifierErrorRate(metrics.verifierTotalRequests, metrics.verifierErrorRequests),
-  ];
+  const probes: ProbeResult[] = [];
+  if (metrics.sponsorBalanceXlm !== undefined) probes.push(probeSponsorBalance(metrics.sponsorBalanceXlm));
+  if (metrics.indexerLagLedgers !== undefined) {
+    probes.push(probeIndexerLag(metrics.indexerLagLedgers, metrics.rpcRetentionLedgers));
+  }
+  if (metrics.pendingCertificatesCount !== undefined) {
+    probes.push(probePendingCertificates(metrics.pendingCertificatesCount));
+  }
+  if (metrics.verifierTotalRequests !== undefined && metrics.verifierErrorRequests !== undefined) {
+    probes.push(probeVerifierErrorRate(metrics.verifierTotalRequests, metrics.verifierErrorRequests));
+  }
 
   const alerts = probes.map((p) => p.alert).filter((a): a is string => Boolean(a));
   const healthy = alerts.length === 0;
