@@ -7,7 +7,7 @@
 | | |
 |---|---|
 | Last updated | 2026-10-29 |
-| Progress | **15 / 20 tasks (75%)** |
+| Progress | **16 / 20 tasks (80%)** |
 
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (ADR) · owner `core`/`wave` · size `T`/`M`/`H`.
 
@@ -16,7 +16,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (ADR) · 
 | Section | Tasks | Done | % |
 |---|---|---|---|
 | Foundations (this repo) | 6 | 4 | 67% |
-| Phase 5 — Studio MVP | 10 | 8 | 80% |
+| Phase 5 — Studio MVP | 10 | 9 | 90% |
 | Phase 7 — v1 | 2 | 2 | 100% |
 | Phase 9 — v2 | 1 | 1 | 100% |
 | Cross-cutting | 1 | 0 | 0% |
@@ -38,7 +38,7 @@ Public pact pages and certificates backed by an indexer and anchorer.
 
 - [x] **S-01** Next.js scaffold, `db.ts`, `001_core.sql`, `migrations.yml` — wave · M · F-02 · ARCH §7.3 (#18, 2026-10-28)
 - [x] **S-02** Indexer: `getEvents`, cursor, idempotent writes for `pact`, facilitator and `RefundVault` events — wave · H · S-01, C-17 (#25, 2026-10-29)
-- [~] **S-03** Indexer backfill from a history source + lag alert at 50% of RPC retention — wave · H · S-02 · FR-R4 — reopened: backfill advanced the cursor over gaps without fetching anything; `sync` now stops with OutsideRetentionError instead. A history-source backfill is still to do
+- [x] **S-03** Indexer backfill from a history source + lag alert at 50% of RPC retention — wave · H · S-02 · FR-R4 (#29, 2026-10-29)
 - [x] **S-04** Anchorer: reconcile from chain → batch (≤ max size, ≥ min interval) → `anchor_batch` → proofs — core · H · S-02, C-20 · FR-R1, FR-R2 (#25, 2026-10-29)
 - [x] **S-05** API: `/api/pacts/:id`, `/api/certificates/:id` (`pending`/`anchored`) — wave · M · S-04 (#18, 2026-10-28)
 - [x] **S-06** Pact timeline page — wave · M · S-05 · FR-I4 (#18, 2026-10-28)
@@ -66,6 +66,7 @@ Dashboards.
 
 | Date | PR / change | Tasks | Summary |
 |---|---|---|---|
+| 2026-10-29 | #29 | S-03 → `[x]` | History-source backfill: fetch historical `pact` and RefundVault events via HistorySource when cursor is behind RPC retention, decode and persist idempotently, advance cursor only through verified scanned ledgers; `syncWithHistory` resumes RPC sync without skipping any events. |
 | 2026-10-29 | Render deploy (#26) | XC-03 → `[~]`; S-10 stays `[~]` | `render.yaml` for testnet on Render: web app (migrations before each deploy), managed Postgres, `/api/sync` every 5 min and `/api/anchor` hourly with a generated `CRON_SECRET`; secrets stay in Render. `/api/ops/health` returned hard-coded numbers; it now measures indexer lag from the slowest cursor, RPC retention and the unanchored-receipt backlog, and runs no probe it can't measure. |
 | 2026-10-29 | #25 | S-02, S-04 → `[x]`; S-03 → `[~]` | Indexer reads real `pact` and RefundVault events via RPC `getEvents` (one cursor per source, one DB transaction per event, idempotent). Receipt leaves now match the contract byte for byte (they were colon-joined text before), tested against its vectors. Anchorer sends real `anchor_batch` with the ReceiptAnchor admin key, records each plan first and reconciles plans with the chain. Live testnet run: 9 pacts indexed, batch 1 anchored (tx `be51068e…`), every proof verified by ReceiptAnchor's `verify_receipt`; rerun changed nothing. Migration 003 drops shards (v0.2.0 has none) and keeps leaf inputs per receipt; the migration runner applies each file once. Cron routes fail closed without CRON_SECRET. Backfill no longer skips gaps. |
 | 2026-10-29 | #24 | — (L-01, master) | README links the 7 MVP scenarios run on testnet by Pactwright-Kit's e2e; these are the first pacts for the indexer and anchorer to pick up. |
