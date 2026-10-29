@@ -40,8 +40,10 @@ jobs:
       # Free-tier services sleep; the first request wakes them, so allow a slow start.
       - name: Sync
         if: env.JOB == 'sync' || env.JOB == 'both'
-        run: curl -fsS --retry 3 --retry-delay 20 --max-time 120 -H "Authorization: Bearer $CRON_SECRET" "$STUDIO_URL/api/sync"
+        run: |
+          curl -fsS --retry 3 --retry-delay 20 --max-time 120 -H "Authorization: Bearer $CRON_SECRET" "$STUDIO_URL/api/sync"
 
       - name: Anchor
         if: env.JOB == 'anchor' || env.JOB == 'both'
-        run: curl -fsS --retry 3 --retry-delay 20 --max-time 120 -H "Authorization: Bearer $CRON_SECRET" "$STUDIO_URL/api/anchor"
+        run: |
+          curl -fsS --retry 3 --retry-delay 20 --max-time 120 -H "Authorization: Bearer $CRON_SECRET" "$STUDIO_URL/api/anchor"
