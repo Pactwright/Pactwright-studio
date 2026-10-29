@@ -123,9 +123,9 @@ flowchart LR
 | M0 pacts | 🚧 Not yet | M0 pacts aren't opened on-chain, so Studio learns of them from the facilitator (X-*). Until then, their refunds are skipped |
 | Pact timeline, certificate viewer | ✅ Working | Playwright end-to-end tests |
 | Merchant dashboard, principal view | 🧪 Seeded data | No sign-in yet |
-| Ops health probes | ✅ Working | Tested |
+| Ops health probes | 🚧 Partial | Indexer lag, RPC retention and the anchoring backlog are measured; sponsor balance and verifier error rate aren't yet |
 | Pollar Studio storefront template | ✅ Template | `templates/pollar-studio`, built with the public Pollar SDK only |
-| Hosted deployment | 📋 Not yet | Needs a host and a managed Postgres (S-10) |
+| Hosted deployment | 📋 Not yet | `render.yaml` is ready; waiting on the Render deploy (S-10) |
 
 Run the live check yourself (it sends real `anchor_batch` transactions):
 
@@ -171,8 +171,17 @@ pnpm --filter web e2e         # Playwright end-to-end tests
 
 ## Deploy
 
-Studio targets Vercel (or any Node host) with managed Postgres and two scheduled jobs.
-[`vercel.json`](vercel.json) runs `/api/sync` every 5 minutes and `/api/anchor` every hour.
+Testnet is hosted on Render from [`render.yaml`](render.yaml): the web app, a managed Postgres,
+and two cron jobs that call `/api/sync` every 5 minutes and `/api/anchor` every hour.
+Migrations run before every deploy. Not live yet (S-10). The public URL goes here once it is.
+
+1. Render Dashboard → **New → Blueprint** → this repo.
+2. Fill in the `sync: false` values when asked. They stay in Render's secret store:
+   `ANCHORER_SECRET` (the `ReceiptAnchor` admin key, testnet only), `INDEX_START_LEDGER`,
+   `REFUND_VAULT_IDS` and `FACILITATOR_URL`. `CRON_SECRET` is generated and shared with the crons.
+3. Check `/api/ops/health`: indexer lag must stay under 50% of RPC retention.
+
+[`vercel.json`](vercel.json) keeps the same two schedules for a Vercel deployment.
 
 | Variable | Purpose |
 |---|---|
@@ -180,7 +189,9 @@ Studio targets Vercel (or any Node host) with managed Postgres and two scheduled
 | `STELLAR_NETWORK`, `STELLAR_NETWORK_PASSPHRASE`, `STELLAR_RPC_URL` | Network. Startup fails if these are incomplete or inconsistent |
 | `HISTORY_SOURCE_URL` | Backfill source when the cursor falls outside RPC retention |
 | `PACT_CONTRACT_ID`, `RECEIPT_ANCHOR_ID`, `FACILITATOR_URL` | What to index and where to anchor ([addresses](https://github.com/Pactwright/Pactwright-contracts/blob/main/DEPLOYMENTS.md)) |
-| `ANCHORER_SECRET_REF` | KMS reference to the `ReceiptAnchor` admin key. Never a raw secret in production |
+| `INDEX_START_LEDGER`, `REFUND_VAULT_IDS` | First ledger to index; RefundVaults whose refunds are indexed |
+| `ANCHORER_SECRET` | `ReceiptAnchor` admin key, testnet only (refused on pubnet) |
+| `ANCHORER_SECRET_REF` | KMS reference to the anchorer key for pubnet (not supported yet) |
 | `CRON_SECRET` | Protects `/api/sync` and `/api/anchor` |
 
 ```bash

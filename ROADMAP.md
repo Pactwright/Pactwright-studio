@@ -7,7 +7,7 @@
 | | |
 |---|---|
 | Last updated | 2026-10-29 |
-| Progress | **16 / 20 tasks (80%)** |
+| Progress | **15 / 20 tasks (75%)** |
 
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (ADR) · owner `core`/`wave` · size `T`/`M`/`H`.
 
@@ -19,7 +19,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (ADR) · 
 | Phase 5 — Studio MVP | 10 | 8 | 80% |
 | Phase 7 — v1 | 2 | 2 | 100% |
 | Phase 9 — v2 | 1 | 1 | 100% |
-| Cross-cutting | 1 | 1 | 100% |
+| Cross-cutting | 1 | 0 | 0% |
 
 ## Foundations (this repo)
 
@@ -45,7 +45,7 @@ Public pact pages and certificates backed by an indexer and anchorer.
 - [x] **S-07** Certificate viewer: offline `verifyReceipt()` + on-chain `verify_receipt` — wave · M · S-05 · FR-R3 (#18, 2026-10-28)
 - [x] **S-08** Stellar Expert links per network — wave · T · S-06 (#18, 2026-10-28)
 - [x] **S-09** Playwright e2e for both pages — wave · M · S-07 (#21, 2026-10-28)
-- [~] **S-10** Deploy studio (testnet) — core · T · S-09 — reopened: deploy config exists, but nothing is deployed (`studio.pactwright.dev` doesn't resolve)
+- [~] **S-10** Deploy studio (testnet) — core · T · S-09 — reopened: deploy config exists, but nothing is deployed (`studio.pactwright.dev` doesn't resolve). `render.yaml` (web, Postgres, sync and anchor crons) is ready; done once the Render deploy is live (#26)
 
 ## Phase 7 — v1
 
@@ -60,12 +60,13 @@ Dashboards.
 
 ## Cross-cutting
 
-- [x] **XC-03** Monitoring: sponsor balance, indexer lag, pending certificates, verifier error rate — wave · M · S-03 (#19, 2026-10-28)
+- [~] **XC-03** Monitoring: sponsor balance, indexer lag, pending certificates, verifier error rate — wave · M · S-03 — reopened: `/api/ops/health` reported hard-coded values. Indexer lag, retention and pending certificates are now measured; sponsor balance and verifier error rate are not measured yet
 
 ## Update log
 
 | Date | PR / change | Tasks | Summary |
 |---|---|---|---|
+| 2026-10-29 | Render deploy (#26) | XC-03 → `[~]`; S-10 stays `[~]` | `render.yaml` for testnet on Render: web app (migrations before each deploy), managed Postgres, `/api/sync` every 5 min and `/api/anchor` hourly with a generated `CRON_SECRET`; secrets stay in Render. `/api/ops/health` returned hard-coded numbers; it now measures indexer lag from the slowest cursor, RPC retention and the unanchored-receipt backlog, and runs no probe it can't measure. |
 | 2026-10-29 | #25 | S-02, S-04 → `[x]`; S-03 → `[~]` | Indexer reads real `pact` and RefundVault events via RPC `getEvents` (one cursor per source, one DB transaction per event, idempotent). Receipt leaves now match the contract byte for byte (they were colon-joined text before), tested against its vectors. Anchorer sends real `anchor_batch` with the ReceiptAnchor admin key, records each plan first and reconciles plans with the chain. Live testnet run: 9 pacts indexed, batch 1 anchored (tx `be51068e…`), every proof verified by ReceiptAnchor's `verify_receipt`; rerun changed nothing. Migration 003 drops shards (v0.2.0 has none) and keeps leaf inputs per receipt; the migration runner applies each file once. Cron routes fail closed without CRON_SECRET. Backfill no longer skips gaps. |
 | 2026-10-29 | #24 | — (L-01, master) | README links the 7 MVP scenarios run on testnet by Pactwright-Kit's e2e; these are the first pacts for the indexer and anchorer to pick up. |
 | 2026-10-29 | #24 | S-02, S-04, S-10 → `[~]` | Reopened tasks whose done-criteria weren't met: the indexer doesn't read the chain, the anchorer doesn't anchor, and Studio isn't deployed. The real work follows in the next PRs. |
