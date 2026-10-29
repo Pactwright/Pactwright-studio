@@ -1,46 +1,49 @@
 name: studio-cron
-# Runs indexer sync every 5 minutes and anchor pass hourly on the deployed Studio (ROADMAP S-02, S-04, S-10)
+# Drives the deployed Studio (ROADMAP S-02, S-04, S-10): indexer sync every 5 minutes, anchoring
+# hourly. Render's free tier has no cron jobs, so GitHub Actions calls the protected routes.
+# Needs repository secrets STUDIO_URL and CRON_SECRET (the same value as on the Render service).
 on:
   schedule:
-    - cron: '*/5 * * * *'
+    - cron: "*/5 * * * *" # sync
+    - cron: "7 * * * *" # anchor (and a sync first)
   workflow_dispatch:
     inputs:
       job:
-        description: 'Job to trigger'
+        description: "Job to trigger"
         required: true
-        default: 'sync'
+        default: sync
         type: choice
-        options:
-          - sync
-          - anchor
-          - both
+        options: [sync, anchor, both]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: studio-cron
+  cancel-in-progress: false
 
 jobs:
   cron:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      STUDIO_URL: ${{ secrets.STUDIO_URL }}
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      JOB: ${{ github.event.inputs.job || (github.event.schedule == '7 * * * *' && 'both') || 'sync' }}
     steps:
-      - name: Trigger Studio sync
-        if: github.event_name == 'schedule' || github.event.inputs.job == 'sync' || github.event.inputs.job == 'both'
+      # A silent skip would leave the indexer stopped with a green check; fail instead.
+      - name: Check configuration
         run: |
-          if [ -n "$STUDIO_URL" ] && [ -n "$CRON_SECRET" ]; then
-            echo "Triggering Studio /api/sync at $STUDIO_URL..."
-            curl -fsS -H "Authorization: Bearer $CRON_SECRET" "$STUDIO_URL/api/sync"
-          else
-            echo "STUDIO_URL or CRON_SECRET not configured in repository secrets; skipping live trigger."
-          fi
-        env:
-          STUDIO_URL: ${{ secrets.STUDIO_URL }}
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          test -n "$STUDIO_URL" || { echo "::error::STUDIO_URL secret is not set"; exit 1; }
+          test -n "$CRON_SECRET" || { echo "::error::CRON_SECRET secret is not set"; exit 1; }
 
-      - name: Trigger Studio anchor
-        if: github.event.inputs.job == 'anchor' || github.event.inputs.job == 'both'
+      # Free-tier services sleep; the first request wakes them, so allow a slow start.
+      - name: Sync
+        if: env.JOB == 'sync' || env.JOB == 'both'
         run: |
-          if [ -n "$STUDIO_URL" ] && [ -n "$CRON_SECRET" ]; then
-            echo "Triggering Studio /api/anchor at $STUDIO_URL..."
-            curl -fsS -H "Authorization: Bearer $CRON_SECRET" "$STUDIO_URL/api/anchor"
-          else
-            echo "STUDIO_URL or CRON_SECRET not configured in repository secrets; skipping live trigger."
-          fi
-        env:
-          STUDIO_URL: ${{ secrets.STUDIO_URL }}
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          curl -fsS --retry 3 --retry-delay 20 --max-time 120 -H "Authorization: Bearer $CRON_SECRET" "$STUDIO_URL/api/sync"
+
+      - name: Anchor
+        if: env.JOB == 'anchor' || env.JOB == 'both'
+        run: |
+          curl -fsS --retry 3 --retry-delay 20 --max-time 120 -H "Authorization: Bearer $CRON_SECRET" "$STUDIO_URL/api/anchor"

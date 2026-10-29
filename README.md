@@ -187,7 +187,7 @@ Migrations run before every deploy. Not live yet (S-10). The public URL goes her
 |---|---|
 | `DATABASE_URL` | Managed Postgres connection string |
 | `STELLAR_NETWORK`, `STELLAR_NETWORK_PASSPHRASE`, `STELLAR_RPC_URL` | Network. Startup fails if these are incomplete or inconsistent |
-| `HISTORY_SOURCE_URL` | Backfill source when the cursor falls outside RPC retention |
+| `HISTORY_RPC_URL` / `HISTORY_SOURCE_URL` | Backfill when the cursor falls outside RPC retention: an archival Stellar RPC, or an HTTP service returning base64-XDR events and `scannedThroughLedger` |
 | `PACT_CONTRACT_ID`, `RECEIPT_ANCHOR_ID`, `FACILITATOR_URL` | What to index and where to anchor ([addresses](https://github.com/Pactwright/Pactwright-contracts/blob/main/DEPLOYMENTS.md)) |
 | `INDEX_START_LEDGER`, `REFUND_VAULT_IDS` | First ledger to index; RefundVaults whose refunds are indexed |
 | `ANCHORER_SECRET` | `ReceiptAnchor` admin key, testnet only (refused on pubnet) |
