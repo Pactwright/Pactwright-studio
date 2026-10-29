@@ -1,0 +1,46 @@
+name: studio-cron
+# Runs indexer sync every 5 minutes and anchor pass hourly on the deployed Studio (ROADMAP S-02, S-04, S-10)
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+    inputs:
+      job:
+        description: 'Job to trigger'
+        required: true
+        default: 'sync'
+        type: choice
+        options:
+          - sync
+          - anchor
+          - both
+
+jobs:
+  cron:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Studio sync
+        if: github.event_name == 'schedule' || github.event.inputs.job == 'sync' || github.event.inputs.job == 'both'
+        run: |
+          if [ -n "$STUDIO_URL" ] && [ -n "$CRON_SECRET" ]; then
+            echo "Triggering Studio /api/sync at $STUDIO_URL..."
+            curl -fsS -H "Authorization: Bearer $CRON_SECRET" "$STUDIO_URL/api/sync"
+          else
+            echo "STUDIO_URL or CRON_SECRET not configured in repository secrets; skipping live trigger."
+          fi
+        env:
+          STUDIO_URL: ${{ secrets.STUDIO_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+
+      - name: Trigger Studio anchor
+        if: github.event.inputs.job == 'anchor' || github.event.inputs.job == 'both'
+        run: |
+          if [ -n "$STUDIO_URL" ] && [ -n "$CRON_SECRET" ]; then
+            echo "Triggering Studio /api/anchor at $STUDIO_URL..."
+            curl -fsS -H "Authorization: Bearer $CRON_SECRET" "$STUDIO_URL/api/anchor"
+          else
+            echo "STUDIO_URL or CRON_SECRET not configured in repository secrets; skipping live trigger."
+          fi
+        env:
+          STUDIO_URL: ${{ secrets.STUDIO_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
