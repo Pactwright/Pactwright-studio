@@ -6,7 +6,7 @@
 
 | | |
 |---|---|
-| Last updated | 2026-10-28 |
+| Last updated | 2026-10-29 |
 | Progress | **15 / 20 tasks (75%)** |
 
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (ADR) · owner `core`/`wave` · size `T`/`M`/`H`.
@@ -66,6 +66,7 @@ Dashboards.
 
 | Date | PR / change | Tasks | Summary |
 |---|---|---|---|
+| 2026-10-29 | #24 | — (L-01, master) | README links the 7 MVP scenarios run on testnet by Pactwright-Kit's e2e; these are the first pacts for the indexer and anchorer to pick up. |
 | 2026-10-29 | #24 | S-02, S-04, S-10 → `[~]` | Reopened tasks whose done-criteria weren't met: the indexer doesn't read the chain, the anchorer doesn't anchor, and Studio isn't deployed. The real work follows in the next PRs. |
 | 2026-10-28 | #23 | F-06, F-07 → `[x]` | README rewritten to explain Studio: why it exists, who uses it, how a receipt becomes provable (flowchart), an honest status table (RPC `fetchEvents` and on-chain `anchor_batch` are still stubs; not deployed), pages and API, local run, deploy, data model, FAQ, and a full License section. Logo assets added. CODEOWNERS, Scorecard and branch protection are live. |
 | 2026-10-28 | #21 | S-09, S-10 | Add Playwright e2e tests for pact timeline and certificate viewer, enable e2e CI workflow, add testnet deployment guide and vercel cron config. |

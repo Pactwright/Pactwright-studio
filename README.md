@@ -49,11 +49,12 @@
 8. [Deploy](#deploy)
 9. [Data model](#data-model)
 10. [Layout](#layout)
-11. [Project status](#project-status)
-12. [FAQ](#faq)
-13. [Built on](#built-on)
-14. [Contributing](#contributing)
-15. [License](#license)
+11. [Testnet pacts to index](#testnet-pacts-to-index)
+12. [Project status](#project-status)
+13. [FAQ](#faq)
+14. [Built on](#built-on)
+15. [Contributing](#contributing)
+16. [License](#license)
 
 ## In 60 seconds
 
@@ -201,6 +202,22 @@ DATABASE_URL="<hosted-postgres-url>" pnpm db:migrate
 | [`migrations`](migrations) | Schema, migration runner and seed data |
 | [`templates/pollar-studio`](templates/pollar-studio) | Storefront template for Pollar Studio sellers |
 | [`docs`](docs) | PRD, architecture, essentials, project structure |
+
+## Testnet pacts to index
+
+These are the pacts Studio will index and anchor first. Every MVP scenario ran as real testnet
+transactions on 2026-10-29 ([Pactwright-Kit testnet e2e](https://github.com/Pactwright/Pactwright-Kit/tree/main/e2e/testnet)).
+Studio doesn't show them yet: reading events from Stellar RPC (S-02) and anchoring (S-04) come next.
+
+| Scenario | Outcome | Transactions |
+|---|---|---|
+| M0 ALLOW | ALLOW, seller keeps 1 | [`e1105f24…`](https://stellar.expert/explorer/testnet/tx/e1105f24d40640eb66a73968c06ae4eedc9f860097a086b0f4450c25995c6600) |
+| M0 DENY | DENY, 1 refunded | [`ae9975c0…`](https://stellar.expert/explorer/testnet/tx/ae9975c028fe6d6bb2159cf4b532cebf42dc6ff8de095adedbac29b52542b8a3) · [`2b78feb8…`](https://stellar.expert/explorer/testnet/tx/2b78feb8459b4731aa50bae1a290e3fd84a9a2b4956f5c6d2b7ae4f615bfae59) |
+| M0 non-delivery | DENY, 0.5 refunded | [`df8af0bd…`](https://stellar.expert/explorer/testnet/tx/df8af0bd9c8f4be9477589d9991ab063134b0e9f92094a90218f5edc9a629005) · [`01357475…`](https://stellar.expert/explorer/testnet/tx/013574756ece7ae81643893f00fb14a2b220d54d096d936ea083a45129189b00) |
+| M2 ALLOW | ALLOW 0.75 of 1, settled | [`0b08b71e…`](https://stellar.expert/explorer/testnet/tx/0b08b71e164252de154d6500b3b8c23c0d68f6a8a1710b87b86e79bbe1166f6c) · [`84a6549a…`](https://stellar.expert/explorer/testnet/tx/84a6549aaa6b61b0e8040d1b43f2819914dc0e40f52d85be871f455d0d5a3e71) · [`9fda6bea…`](https://stellar.expert/explorer/testnet/tx/9fda6beadb02f863f74e220820642a4509f269c31e3462fccf6318e1e2fa11c5) |
+| M2 DENY | DENY, full refund | [`b953ee00…`](https://stellar.expert/explorer/testnet/tx/b953ee00524d5b0a9b53308ab1e370a2008fb82b7f5a949ac1934d2aa12d17a7) · [`324f630d…`](https://stellar.expert/explorer/testnet/tx/324f630d39eb88fa76a60b92617e5867421e9819c290a8f3d71ec4bd8bec9138) · [`272703bf…`](https://stellar.expert/explorer/testnet/tx/272703bfbe0a74becf50a80b5d16600396a17440a82c9b3af5c481d4748c22cf) |
+| M2 silence | no verdict, refunded by silence policy | [`76df8318…`](https://stellar.expert/explorer/testnet/tx/76df83188eb7cf22c0b6c639fc0a090615ca3040ecfb6a3e43d6347cece27d59) · [`e62aff4d…`](https://stellar.expert/explorer/testnet/tx/e62aff4d291eff2b76ba282aae987d82c6ca91e1681e7944d96abb1f3739f833) |
+| Dispute refund | dispute-1: 2 of 4 pages, 0.5 refunded | [`a191a000…`](https://stellar.expert/explorer/testnet/tx/a191a000f7920f2fff9839bbccceeeca35c82fce29a5e46510fd3db1bcdf2ff0) |
 
 ## Project status
 
