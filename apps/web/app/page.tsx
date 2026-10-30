@@ -16,8 +16,8 @@ export default async function Home() {
   }
 
   return (
-    <main className="desk">
-      <article className="document document--watermark">
+    <main className="shell">
+      <article className="panel panel--feature">
         <div className="home-intro">
           <div>
             <h1>Pactwright Studio</h1>
@@ -39,7 +39,7 @@ export default async function Home() {
             <input
               id="pact-id"
               name="id"
-              className="typed-input"
+              className="field"
               placeholder="64-character pact ID"
               autoComplete="off"
               spellCheck={false}
@@ -47,7 +47,7 @@ export default async function Home() {
               pattern="\s*[0-9a-fA-F]{64}\s*"
               title="A pact ID is 64 hexadecimal characters."
             />
-            <button type="submit" className="press">
+            <button type="submit" className="cta">
               Open pact
             </button>
           </form>
@@ -75,15 +75,15 @@ export default async function Home() {
                 <tbody>
                   {recent.map((p) => (
                     <tr key={p.pact_id}>
-                      <td className="typed">
+                      <td className="mono">
                         <a href={`/pact/${p.pact_id}`}>
                           {p.pact_id.slice(0, 8)}…{p.pact_id.slice(-6)}
                         </a>
                       </td>
                       <td className="secondary">{modeName(p.mode)}</td>
-                      <td className="typed num">{formatUsdc(p.cap)}</td>
-                      <td className="typed num">{formatUsdc(p.to_seller)}</td>
-                      <td className="typed num secondary">{formatUsdc(p.to_buyer)}</td>
+                      <td className="mono num">{formatUsdc(p.cap)}</td>
+                      <td className="mono num">{formatUsdc(p.to_seller)}</td>
+                      <td className="mono num secondary">{formatUsdc(p.to_buyer)}</td>
                       <td>
                         <StateBadge state={p.state} />
                       </td>
@@ -96,21 +96,21 @@ export default async function Home() {
         </section>
       </article>
 
-      <nav className="slips" aria-label="Other views">
-        <a className="slip" href="/verify">
+      <nav className="tiles" aria-label="Other views">
+        <a className="tile" href="/verify">
           <h2>Certificate Viewer</h2>
           <p>Check a receipt certificate against its anchored Merkle root. The check runs in your browser.</p>
-          <span className="slip-go">Verify a certificate</span>
+          <span className="tile-go">Verify a certificate</span>
         </a>
-        <a className="slip" href="/merchant">
+        <a className="tile" href="/merchant">
           <h2>Merchant Dashboard</h2>
           <p>Revenue, refunds and disputes for a seller, route by route.</p>
-          <span className="slip-go">See sellers</span>
+          <span className="tile-go">See sellers</span>
         </a>
-        <a className="slip" href="/principal">
+        <a className="tile" href="/principal">
           <h2>Principal View</h2>
           <p>Budgets and live pacts for the agents you fund.</p>
-          <span className="slip-go">See agent budgets</span>
+          <span className="tile-go">See agent budgets</span>
         </a>
       </nav>
     </main>

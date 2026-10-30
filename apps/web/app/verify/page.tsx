@@ -3,8 +3,8 @@ import { CertificateCard } from "@/components/CertificateCard";
 
 export default function VerifyPage() {
   return (
-    <main className="desk">
-      <article className="document document--watermark">
+    <main className="shell">
+      <article className="panel panel--feature">
         <h1>Verify Certificate</h1>
         <p className="lede">
           Every finished pact gets a receipt, and receipts are anchored on-chain in batches. Paste a receipt certificate to

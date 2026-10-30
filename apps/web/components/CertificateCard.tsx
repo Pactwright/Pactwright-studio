@@ -62,10 +62,10 @@ export function CertificateCard({ initialCertificate }: { initialCertificate?: C
         placeholder='{"pactId": "…", "transition": "settled", "leaf": "…", "root": "…", "proof": […], "status": "anchored"}'
         rows={6}
         spellCheck={false}
-        className="typed-input"
+        className="field"
       />
       <div className="actions">
-        <button type="button" onClick={handleInspect} className="press">
+        <button type="button" onClick={handleInspect} className="cta">
           Inspect & Verify
         </button>
       </div>
@@ -101,30 +101,30 @@ export function CertificateCard({ initialCertificate }: { initialCertificate?: C
             <dl className="form-grid">
               <div>
                 <dt className="field-label">Pact</dt>
-                <dd className="typed-value">
+                <dd className="value">
                   <a href={`/pact/${certificate.pactId}`}>{certificate.pactId}</a>
                 </dd>
               </div>
               <div>
                 <dt className="field-label">Outcome</dt>
-                <dd className="typed-value">{certificate.transition}</dd>
+                <dd className="value">{certificate.transition}</dd>
               </div>
               <div>
                 <dt className="field-label">To the seller</dt>
-                <dd className="typed-value">{formatUsdc(certificate.toSeller)} USDC</dd>
+                <dd className="value">{formatUsdc(certificate.toSeller)} USDC</dd>
               </div>
               <div>
                 <dt className="field-label">To the buyer</dt>
-                <dd className="typed-value">{formatUsdc(certificate.toBuyer)} USDC</dd>
+                <dd className="value">{formatUsdc(certificate.toBuyer)} USDC</dd>
               </div>
               <div>
                 <dt className="field-label">Receipt leaf</dt>
-                <dd className="typed-value">{certificate.leaf}</dd>
+                <dd className="value">{certificate.leaf}</dd>
               </div>
               {certificate.root && (
                 <div>
                   <dt className="field-label">Merkle root</dt>
-                  <dd className="typed-value">{certificate.root}</dd>
+                  <dd className="value">{certificate.root}</dd>
                 </div>
               )}
             </dl>

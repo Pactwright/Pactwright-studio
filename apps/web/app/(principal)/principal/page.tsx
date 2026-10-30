@@ -19,8 +19,8 @@ export default async function PrincipalViewPage({
 
   if (!data) {
     return (
-      <main className="desk">
-        <article className="document">
+      <main className="shell">
+        <article className="panel">
           <h1>Principal View</h1>
           <p className="notice">
             No principals are registered yet. Running Studio locally? Load the sample accounts with <code>pnpm db:seed</code>.
@@ -33,8 +33,8 @@ export default async function PrincipalViewPage({
   const { principal, allPrincipals, agents, budgets, livePacts, metrics } = data;
 
   return (
-    <main className="desk">
-      <article className="document document--watermark">
+    <main className="shell">
+      <article className="panel panel--feature">
         <span className="field-label">Principal View</span>
         <h1 className="id-heading">{principal}</h1>
         <p className="prose">The account that funds these agents, with each agent&apos;s budget and the pacts open right now.</p>
@@ -43,7 +43,7 @@ export default async function PrincipalViewPage({
           <nav className="chooser" aria-label="Choose a principal">
             <span className="field-label">Other principals</span>
             {allPrincipals.map((p) => (
-              <a key={p} href={`/principal?principal=${p}`} className="typed" aria-current={p === principal ? "true" : undefined}>
+              <a key={p} href={`/principal?principal=${p}`} className="mono" aria-current={p === principal ? "true" : undefined}>
                 {p.slice(0, 4)}…{p.slice(-4)}
               </a>
             ))}
@@ -51,24 +51,24 @@ export default async function PrincipalViewPage({
         )}
 
         <section className="totals" aria-label="Totals">
-          <div className="total-box">
+          <div className="stat">
             <span className="field-label">Allocated</span>
-            <span className="typed-value">{formatUsdc(metrics.totalBudget)} USDC</span>
+            <span className="value">{formatUsdc(metrics.totalBudget)} USDC</span>
             <small>Across all agent budgets</small>
           </div>
-          <div className="total-box">
+          <div className="stat">
             <span className="field-label">Funded</span>
-            <span className="typed-value">{formatUsdc(metrics.fundedBudget)} USDC</span>
+            <span className="value">{formatUsdc(metrics.fundedBudget)} USDC</span>
             <small>Ready for agents to spend</small>
           </div>
-          <div className="total-box">
+          <div className="stat">
             <span className="field-label">Agents</span>
-            <span className="typed-value">{metrics.activeAgentsCount}</span>
+            <span className="value">{metrics.activeAgentsCount}</span>
             <small>Signing accounts</small>
           </div>
-          <div className="total-box">
+          <div className="stat">
             <span className="field-label">Open pacts</span>
-            <span className="typed-value">{metrics.livePactsCount}</span>
+            <span className="value">{metrics.livePactsCount}</span>
             <small>Not yet finished on-chain</small>
           </div>
         </section>
@@ -95,12 +95,12 @@ export default async function PrincipalViewPage({
                     const agent = agents.find((a) => a.address === b.agent);
                     return (
                       <tr key={b.id}>
-                        <td className="typed">
+                        <td className="mono">
                           <AccountLink address={b.agent} />
                         </td>
                         <td>{agent?.label ?? "Unnamed"}</td>
-                        <td className="typed num">{formatUsdc(b.amount)}</td>
-                        <td className="typed">{b.asset}</td>
+                        <td className="mono num">{formatUsdc(b.amount)}</td>
+                        <td className="mono">{b.asset}</td>
                         <td>
                           <span className="stamp stamp--small" data-ink={b.status === "funded" ? "teal" : "indigo"}>
                             {b.status === "funded" ? "Funded" : "Not funded"}
@@ -135,7 +135,7 @@ export default async function PrincipalViewPage({
                 <tbody>
                   {livePacts.map((p) => (
                     <tr key={p.pact_id}>
-                      <td className="typed">
+                      <td className="mono">
                         <a href={`/pact/${p.pact_id}`}>
                           {p.pact_id.slice(0, 8)}…{p.pact_id.slice(-6)}
                         </a>
@@ -144,8 +144,8 @@ export default async function PrincipalViewPage({
                         <StateBadge state={p.state as PactState} />
                       </td>
                       <td>{modeName(p.mode)}</td>
-                      <td className="typed num">{formatUsdc(p.cap)}</td>
-                      <td className="typed">
+                      <td className="mono num">{formatUsdc(p.cap)}</td>
+                      <td className="mono">
                         <AccountLink address={p.seller} />
                       </td>
                     </tr>

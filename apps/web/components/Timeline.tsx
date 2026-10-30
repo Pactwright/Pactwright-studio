@@ -19,21 +19,21 @@ export function Timeline({ pactId, events = [] }: TimelineProps) {
   }
 
   return (
-    <ol className="stubs">
+    <ol className="chain">
       {events.map((event, idx) => {
         const { title, detail, ink } = describeEvent(event);
         return (
-          <li key={event.id ?? idx} className="stub">
-            <div className="stub-tab">
+          <li key={event.id ?? idx} className="block">
+            <div className="block-head">
               <span className="stamp" data-ink={ink}>
                 {title}
               </span>
-              {event.ledger != null && <span className="stub-ledger">Ledger {event.ledger}</span>}
+              {event.ledger != null && <span className="block-height">Ledger {event.ledger}</span>}
             </div>
-            <div className="stub-body">
+            <div className="block-body">
               <p>{detail}</p>
               {event.tx_hash && (
-                <span className="stub-meta">
+                <span className="block-meta">
                   Transaction <TxLink hash={event.tx_hash} />
                 </span>
               )}

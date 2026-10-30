@@ -22,8 +22,8 @@ export default async function PactPage({
 
   if (!data) {
     return (
-      <main className="desk">
-        <article className="document">
+      <main className="shell">
+        <article className="panel">
           <span className="field-label">Pact ID</span>
           <h1 className="id-heading">{id}</h1>
           <p className="notice">
@@ -40,8 +40,8 @@ export default async function PactPage({
   const { pact, events } = data;
 
   return (
-    <main className="desk">
-      <article className="document document--watermark">
+    <main className="shell">
+      <article className="panel panel--feature">
         <header className="pact-head">
           <div>
             <span className="field-label">Pact ID</span>
@@ -56,39 +56,39 @@ export default async function PactPage({
         <dl className="form-grid">
           <div>
             <dt className="field-label">Cap</dt>
-            <dd className="typed-value">{formatUsdc(pact.cap)} USDC</dd>
+            <dd className="value">{formatUsdc(pact.cap)} USDC</dd>
           </div>
           <div>
             <dt className="field-label">Mode</dt>
-            <dd className="typed-value">{modeName(pact.mode)}</dd>
+            <dd className="value">{modeName(pact.mode)}</dd>
           </div>
           <div>
             <dt className="field-label">Paid to the seller</dt>
-            <dd className="typed-value">{formatUsdc(pact.to_seller)} USDC</dd>
+            <dd className="value">{formatUsdc(pact.to_seller)} USDC</dd>
           </div>
           <div>
             <dt className="field-label">Returned to the buyer</dt>
-            <dd className="typed-value">{formatUsdc(pact.to_buyer)} USDC</dd>
+            <dd className="value">{formatUsdc(pact.to_buyer)} USDC</dd>
           </div>
           <div>
             <dt className="field-label">Buyer</dt>
-            <dd className="typed-value">
+            <dd className="value">
               <AccountLink address={pact.buyer} />
             </dd>
           </div>
           <div>
             <dt className="field-label">Seller</dt>
-            <dd className="typed-value">
+            <dd className="value">
               <AccountLink address={pact.seller} />
             </dd>
           </div>
           <div>
             <dt className="field-label">If no verdict arrives in time</dt>
-            <dd className="typed-value">{silenceName(pact.silence)}</dd>
+            <dd className="value">{silenceName(pact.silence)}</dd>
           </div>
           <div>
             <dt className="field-label">What was bought</dt>
-            <dd className="typed-value">
+            <dd className="value">
               {pact.resource_url ? (
                 <a href={pact.resource_url} target="_blank" rel="noopener noreferrer">
                   {pact.resource_url}
@@ -102,7 +102,7 @@ export default async function PactPage({
       </article>
 
       <section aria-labelledby="timeline-title">
-        <h2 id="timeline-title" className="stubs-title">
+        <h2 id="timeline-title" className="chain-title">
           What happened
         </h2>
         <Timeline pactId={pact.pact_id} events={events} />

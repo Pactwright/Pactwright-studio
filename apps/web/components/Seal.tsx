@@ -19,41 +19,41 @@ function Mark({ back, front }: { back: string; front: string }) {
 }
 
 /**
- * The brand mark as an embossed foil seal. `pressed` plays the stamping motion once, used when a
- * certificate checks out.
+ * The brand mark as a holographic foil seal: the foil gradient, with an iridescent sheen laid over it
+ * in CSS (`.seal::after`). `pressed` plays the stamping motion once, used when a certificate checks out.
  */
 export function Seal({ size = 96, pressed = false, label = "Pactwright seal" }: { size?: number; pressed?: boolean; label?: string }) {
   const id = useId().replace(/:/g, "");
   return (
-    <svg
+    <span
       className={`seal${pressed ? " seal--pressed" : ""}`}
-      width={size}
-      height={size}
-      viewBox="0 0 100 100"
+      style={{ width: size, height: size }}
       {...(label ? { role: "img", "aria-label": label } : { "aria-hidden": true })}
     >
-      <defs>
-        <linearGradient id={`foil-${id}`} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#2DD4BF" />
-          <stop offset="0.48" stopColor="#4FA6D8" />
-          <stop offset="1" stopColor="#6366F1" />
-        </linearGradient>
-        <linearGradient id={`sheen-${id}`} x1="0.1" y1="0" x2="0.9" y2="1">
-          <stop offset="0" stopColor="#fff" stopOpacity="0.55" />
-          <stop offset="0.35" stopColor="#fff" stopOpacity="0" />
-          <stop offset="0.7" stopColor="#0B1736" stopOpacity="0" />
-          <stop offset="1" stopColor="#0B1736" stopOpacity="0.35" />
-        </linearGradient>
-      </defs>
-      <path d={EDGE} fill={`url(#foil-${id})`} />
-      <path d={EDGE} fill={`url(#sheen-${id})`} />
-      <circle cx="50" cy="50" r="37" fill="none" stroke="#fff" strokeOpacity="0.45" strokeWidth="1" />
-      <circle cx="50" cy="50" r="34.5" fill="none" stroke="#0B1736" strokeOpacity="0.3" strokeWidth="1" />
-      {/* Embossing: the mark's impression, offset down-right beneath it. */}
-      <g transform="translate(0.8 0.9)">
-        <Mark back="rgba(11,23,54,0.35)" front="rgba(11,23,54,0.35)" />
-      </g>
-      <Mark back="#0B1736" front="#F8FAFC" />
-    </svg>
+      <svg width={size} height={size} viewBox="0 0 100 100" aria-hidden="true">
+        <defs>
+          <linearGradient id={`foil-${id}`} x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stopColor="#2DD4BF" />
+            <stop offset="0.48" stopColor="#4FA6D8" />
+            <stop offset="1" stopColor="#6366F1" />
+          </linearGradient>
+          <linearGradient id={`sheen-${id}`} x1="0.1" y1="0" x2="0.9" y2="1">
+            <stop offset="0" stopColor="#fff" stopOpacity="0.55" />
+            <stop offset="0.35" stopColor="#fff" stopOpacity="0" />
+            <stop offset="0.7" stopColor="#0B1736" stopOpacity="0" />
+            <stop offset="1" stopColor="#0B1736" stopOpacity="0.35" />
+          </linearGradient>
+        </defs>
+        <path d={EDGE} fill={`url(#foil-${id})`} />
+        <path d={EDGE} fill={`url(#sheen-${id})`} />
+        <circle cx="50" cy="50" r="37" fill="none" stroke="#fff" strokeOpacity="0.45" strokeWidth="1" />
+        <circle cx="50" cy="50" r="34.5" fill="none" stroke="#0B1736" strokeOpacity="0.3" strokeWidth="1" />
+        {/* Embossing: the mark's impression, offset down-right beneath it. */}
+        <g transform="translate(0.8 0.9)">
+          <Mark back="rgba(11,23,54,0.35)" front="rgba(11,23,54,0.35)" />
+        </g>
+        <Mark back="#0B1736" front="#F8FAFC" />
+      </svg>
+    </span>
   );
 }

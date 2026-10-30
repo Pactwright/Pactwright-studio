@@ -1,14 +1,16 @@
 import type { ReactNode } from "react";
-import { Bodoni_Moda, Courier_Prime } from "next/font/google";
+import { JetBrains_Mono, Manrope, Unbounded } from "next/font/google";
 import { Seal } from "@/components/Seal";
-import { DeskNav } from "@/components/DeskNav";
+import { SiteNav } from "@/components/SiteNav";
 import { getNetwork } from "@/lib/explorer";
 import "./globals.css";
 
-// Printed matter: an engraved serif whose optical sizes stay sturdy at label sizes.
-const printed = Bodoni_Moda({ subsets: ["latin"], axes: ["opsz"], style: ["normal", "italic"], variable: "--font-printed" });
-// Typed matter: everything filled in on the form (amounts, addresses, hashes).
-const typed = Courier_Prime({ subsets: ["latin"], weight: ["400", "700"], variable: "--font-typed" });
+// Headings and the brand: wide and rounded.
+const display = Unbounded({ subsets: ["latin"], weight: ["500", "600", "700"], variable: "--font-display" });
+// Reading text.
+const text = Manrope({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-text" });
+// On-chain values only: hashes, addresses, amounts.
+const mono = JetBrains_Mono({ subsets: ["latin"], weight: ["400", "500", "700"], variable: "--font-mono" });
 
 export const metadata = {
   title: "Pactwright Studio",
@@ -18,17 +20,18 @@ export const metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   const network = getNetwork();
   return (
-    <html lang="en" className={`${printed.variable} ${typed.variable}`}>
+    <html lang="en" className={`${display.variable} ${text.variable} ${mono.variable}`}>
       <body>
-        <header className="desk-head">
+        <header className="site-head">
           <a className="brand" href="/">
-            <Seal size={40} label="" />
+            <Seal size={36} label="" />
             Pactwright Studio
           </a>
-          <DeskNav />
+          <SiteNav />
         </header>
         {children}
-        <footer className="desk-foot">
+        <footer className="site-foot">
+          <span className="live-dot" aria-hidden="true" />
           Showing Stellar {network === "pubnet" ? "mainnet" : "testnet"}. Pacts and their timelines are read from the chain.
         </footer>
       </body>

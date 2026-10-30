@@ -9,10 +9,10 @@ const LINKS = [
   { href: "/principal", label: "Agent budgets" },
 ];
 
-export function DeskNav() {
+export function SiteNav() {
   const path = usePathname();
   return (
-    <nav className="desk-nav" aria-label="Studio">
+    <nav className="site-nav" aria-label="Studio">
       {LINKS.map((l) => {
         const current = l.href === "/" ? path === "/" || path.startsWith("/pact") : path.startsWith(l.href);
         return (

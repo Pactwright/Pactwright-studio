@@ -17,8 +17,8 @@ export default async function MerchantDashboardPage({
 
   if (!data) {
     return (
-      <main className="desk">
-        <article className="document">
+      <main className="shell">
+        <article className="panel">
           <h1>Merchant Dashboard</h1>
           <p className="notice">
             No sellers are registered yet. Running Studio locally? Load the sample sellers with <code>pnpm db:seed</code>.
@@ -31,8 +31,8 @@ export default async function MerchantDashboardPage({
   const { seller, allSellers, metrics, routes } = data;
 
   return (
-    <main className="desk">
-      <article className="document document--watermark">
+    <main className="shell">
+      <article className="panel panel--feature">
         <span className="field-label">Merchant Dashboard</span>
         <h1>{seller.name}</h1>
         <p className="prose">
@@ -51,24 +51,24 @@ export default async function MerchantDashboardPage({
         )}
 
         <section className="totals" aria-label="Totals">
-          <div className="total-box">
+          <div className="stat">
             <span className="field-label">Revenue</span>
-            <span className="typed-value">{formatUsdc(metrics.totalRevenue)} USDC</span>
+            <span className="value">{formatUsdc(metrics.totalRevenue)} USDC</span>
             <small>From settled and paid pacts</small>
           </div>
-          <div className="total-box">
+          <div className="stat">
             <span className="field-label">Pacts</span>
-            <span className="typed-value">{metrics.totalPacts}</span>
+            <span className="value">{metrics.totalPacts}</span>
             <small>{metrics.settledPacts} settled</small>
           </div>
-          <div className="total-box">
+          <div className="stat">
             <span className="field-label">Refund rate</span>
-            <span className="typed-value">{metrics.refundRate}%</span>
+            <span className="value">{metrics.refundRate}%</span>
             <small>{metrics.refundedPacts} refunded</small>
           </div>
-          <div className="total-box">
+          <div className="stat">
             <span className="field-label">Dispute rate</span>
-            <span className="typed-value">{metrics.disputeRate}%</span>
+            <span className="value">{metrics.disputeRate}%</span>
             <small>{metrics.disputeCount} denied verdicts</small>
           </div>
         </section>
@@ -92,11 +92,11 @@ export default async function MerchantDashboardPage({
                 <tbody>
                   {routes.map((route) => (
                     <tr key={route.id}>
-                      <td className="typed wrap">{route.resource_url}</td>
+                      <td className="mono wrap">{route.resource_url}</td>
                       <td>{modeName(route.mode)}</td>
-                      <td className="typed num">{formatUsdc(route.price)}</td>
+                      <td className="mono num">{formatUsdc(route.price)}</td>
                       <td>{silenceName(route.silence)}</td>
-                      <td className="typed num">{route.refund_window_ledgers} ledgers</td>
+                      <td className="mono num">{route.refund_window_ledgers} ledgers</td>
                     </tr>
                   ))}
                 </tbody>
