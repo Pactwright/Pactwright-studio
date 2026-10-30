@@ -11,14 +11,16 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Pactwright/Pactwright-studio/actions/workflows/ci.yml"><img src="https://img.shields.io/badge/tests-48_unit_%2B_e2e-2DD4BF?style=for-the-badge&labelColor=0B1220" alt="48 unit tests plus end-to-end tests"></a>
+  <a href="https://github.com/Pactwright/Pactwright-studio/actions/workflows/ci.yml"><img src="https://img.shields.io/badge/tests-62_unit_%2B_3_e2e-2DD4BF?style=for-the-badge&labelColor=0B1220" alt="62 unit tests plus 3 end-to-end tests"></a>
   <a href="#what-works-today"><img src="https://img.shields.io/badge/anchoring-testnet-2DD4BF?style=for-the-badge&labelColor=0B1220" alt="Anchoring on testnet"></a>
-  <a href="#what-works-today"><img src="https://img.shields.io/badge/deployment-not_yet-F59E0B?style=for-the-badge&labelColor=0B1220" alt="Not deployed yet"></a>
+  <a href="https://pactwright-studio-testnet.onrender.com"><img src="https://img.shields.io/badge/deployment-live_on_testnet-2DD4BF?style=for-the-badge&labelColor=0B1220" alt="Live on testnet"></a>
   <a href="https://github.com/Pactwright/Pactwright-contracts"><img src="https://img.shields.io/badge/contract-testnet-6366F1?style=for-the-badge&labelColor=0B1220" alt="Contract on testnet"></a>
   <a href="#license"><img src="https://img.shields.io/badge/license-MIT-94A3B8?style=for-the-badge&labelColor=0B1220" alt="MIT license"></a>
 </p>
 
 <p align="center">
+  <a href="https://pactwright-studio-testnet.onrender.com"><b>Open Studio</b></a> ·
+  <a href="https://pactwright.github.io/docs/"><b>Documentation</b></a> ·
   <a href="#in-60-seconds"><b>In 60 seconds</b></a> ·
   <a href="#how-a-receipt-becomes-provable"><b>How a receipt becomes provable</b></a> ·
   <a href="#what-works-today"><b>What works today</b></a> ·
@@ -33,36 +35,37 @@
 </p>
 
 > [!IMPORTANT]
-> **Not deployed yet.** The indexer reads real `pact` and RefundVault events from Stellar testnet,
-> and the anchorer has anchored real receipts on the deployed ReceiptAnchor. Every proof verified
-> on-chain with `verify_receipt` ([batch 1](https://stellar.expert/explorer/testnet/tx/be51068eea65b8f47799253ca45bd5e5d9c014d7cae0b873f19150658d8edfb0)).
-> There is no public URL yet. [What works today](#what-works-today) has the details.
+> **Live on testnet: [pactwright-studio-testnet.onrender.com](https://pactwright-studio-testnet.onrender.com).** It indexes the
+> `pact` contract every 5 minutes and anchors receipts on the deployed `ReceiptAnchor` every hour;
+> every proof verifies on-chain with `verify_receipt`. Testnet only, not audited. The seller and
+> agent-budget pages still show sample data. [What works today](#what-works-today) has the details.
 
 ## Contents
 
 1. [In 60 seconds](#in-60-seconds)
 2. [Why this exists](#why-this-exists)
 3. [Who uses it](#who-uses-it)
-4. [How a receipt becomes provable](#how-a-receipt-becomes-provable)
-5. [What works today](#what-works-today)
-6. [Pages and API](#pages-and-api)
-7. [Run it locally](#run-it-locally)
-8. [Deploy](#deploy)
-9. [Data model](#data-model)
-10. [Layout](#layout)
-11. [Testnet pacts to index](#testnet-pacts-to-index)
-12. [Project status](#project-status)
-13. [FAQ](#faq)
-14. [Built on](#built-on)
-15. [Contributing](#contributing)
-16. [License](#license)
+4. [The interface](#the-interface)
+5. [How a receipt becomes provable](#how-a-receipt-becomes-provable)
+6. [What works today](#what-works-today)
+7. [Pages and API](#pages-and-api)
+8. [Run it locally](#run-it-locally)
+9. [Deploy](#deploy)
+10. [Data model](#data-model)
+11. [Layout](#layout)
+12. [Testnet pacts](#testnet-pacts)
+13. [Project status](#project-status)
+14. [FAQ](#faq)
+15. [Built on](#built-on)
+16. [Contributing](#contributing)
+17. [License](#license)
 
 ## In 60 seconds
 
 - **What a pact is.** An AI agent's purchase held in escrow on Stellar. The buyer's money moves only when a verifier confirms delivery; otherwise it goes back. The [contract](https://github.com/Pactwright/Pactwright-contracts) runs on testnet.
 - **What Studio does.** It follows every pact on-chain and shows its timeline. It turns each final outcome into a receipt and anchors batches of receipts on Stellar. The result is a certificate anyone can check, with or without trusting Studio.
-- **What runs today.** A Next.js app with the pact timeline, the certificate viewer, merchant and principal dashboards, the indexer and anchorer logic, ops health checks and a Postgres schema. It has 48 unit tests and Playwright end-to-end tests in CI, plus a live testnet test that indexes, anchors and verifies real receipts.
-- **What's next.** Connect the indexer to Stellar RPC and the anchorer to the deployed `ReceiptAnchor`, then deploy.
+- **What runs today.** A Next.js app, live on testnet: a home page with pact lookup and the latest pacts, the pact timeline, the certificate viewer, merchant and principal dashboards, the indexer and anchorer, ops health checks and a Postgres schema. It has 62 unit tests and 3 Playwright end-to-end tests in CI, plus a live testnet test that indexes, anchors and verifies real receipts.
+- **What's next.** Real data for the seller and agent-budget pages (registration and sign-in), indexing exact-refund (M0) purchases, and a KMS-held anchorer key before mainnet.
 
 ## Why this exists
 
@@ -89,6 +92,15 @@ Each receipt can still be proven on its own.
 | **Sellers** | `/merchant` | Revenue, refund and dispute rates, cost per route |
 | **Agent owners** | `/principal` | Budgets and live pacts for each agent they run |
 | **Operators** | `/api/ops/health` | Sponsor balance, indexer lag, pending certificates, verifier error rate |
+
+## The interface
+
+A dark, on-chain look that keeps three objects which carry meaning: the Pactwright **seal**, which
+presses in when a certificate verifies; **stamps** for a pact's state (teal when the money moved as
+agreed, rose when it came back, indigo while it's in escrow); and the timeline as a **chain of
+blocks**, each labelled with its ledger. Amounts and events are in plain words ("1.00 USDC to the
+seller, 0.00 USDC back to the buyer"). It works without JavaScript for lookup, respects reduced
+motion, and has been audited at phone, tablet and desktop sizes, including at 200% text.
 
 ## How a receipt becomes provable
 
@@ -119,13 +131,13 @@ flowchart LR
 | Crash safety | ✅ Working | Each batch is recorded as a plan before it's sent; the next run settles plans against the chain, so a batch is never anchored twice or lost |
 | Certificates | ✅ Testnet | Every anchored proof verifies offline and with ReceiptAnchor's own `verify_receipt` |
 | Lag alerting | ✅ Working | Alert at 50% of RPC retention |
-| Backfill from a history source | 🚧 Not yet | If the cursor falls outside RPC retention, `sync` stops with an error rather than skip events (S-03) |
+| Backfill from a history source | ✅ Working | If the cursor falls outside RPC retention, `sync` backfills from an archival RPC (`HISTORY_RPC_URL`) or an HTTP history source; without one it stops with an error rather than skip events |
 | M0 pacts | 🚧 Not yet | M0 pacts aren't opened on-chain, so Studio learns of them from the facilitator (X-*). Until then, their refunds are skipped |
-| Pact timeline, certificate viewer | ✅ Working | Playwright end-to-end tests |
+| Home page, pact timeline, certificate viewer | ✅ Testnet | Live; Playwright end-to-end tests. Checked at phone, tablet and desktop sizes |
 | Merchant dashboard, principal view | 🧪 Seeded data | No sign-in yet |
 | Ops health probes | 🚧 Partial | Indexer lag, RPC retention and the anchoring backlog are measured; sponsor balance and verifier error rate aren't yet |
 | Pollar Studio storefront template | ✅ Template | `templates/pollar-studio`, built with the public Pollar SDK only |
-| Hosted deployment | 📋 Not yet | `render.yaml` is ready; waiting on the Render deploy (S-10) |
+| Hosted deployment | ✅ Testnet | [pactwright-studio-testnet.onrender.com](https://pactwright-studio-testnet.onrender.com) on Render. The [`studio-cron`](.github/workflows/studio-cron.yml) workflow syncs every 5 minutes and anchors hourly |
 
 Run the live check yourself (it sends real `anchor_batch` transactions):
 
@@ -140,7 +152,8 @@ pnpm --filter web live:testnet
 
 | Route | Kind | Purpose |
 |---|---|---|
-| `/pact/[id]` | Page | Public pact timeline |
+| `/` | Page | Pact lookup and the latest pacts |
+| `/pact/[id]` | Page | Public pact timeline (`/pact?id=…` redirects here, so lookup works without JavaScript) |
 | `/verify` | Page | Certificate viewer: offline proof plus on-chain status |
 | `/merchant` | Page | Seller dashboard |
 | `/principal` | Page | Agent owner view |
@@ -165,20 +178,24 @@ pnpm dev                      # http://localhost:3000
 
 ```bash
 pnpm typecheck
-pnpm test                     # 48 unit tests
-pnpm --filter web e2e         # Playwright end-to-end tests
+pnpm test                     # 62 unit tests
+pnpm --filter web e2e         # 3 Playwright end-to-end tests
 ```
 
 ## Deploy
 
-Testnet is hosted on Render from [`render.yaml`](render.yaml): the web app, a managed Postgres,
-and two cron jobs that call `/api/sync` every 5 minutes and `/api/anchor` every hour.
-Migrations run before every deploy. Not live yet (S-10). The public URL goes here once it is.
+Testnet is live at [pactwright-studio-testnet.onrender.com](https://pactwright-studio-testnet.onrender.com), hosted on Render from
+[`render.yaml`](render.yaml): the web app and a managed Postgres. Migrations run before every deploy.
+Render's free tier has no cron jobs, so the [`studio-cron`](.github/workflows/studio-cron.yml)
+GitHub Actions workflow calls `/api/sync` every 5 minutes and `/api/anchor` every hour. It needs the
+repository secrets `STUDIO_URL` and `CRON_SECRET` (the same value as on Render), and fails loudly
+without them.
 
 1. Render Dashboard → **New → Blueprint** → this repo.
 2. Fill in the `sync: false` values when asked. They stay in Render's secret store:
    `ANCHORER_SECRET` (the `ReceiptAnchor` admin key, testnet only), `INDEX_START_LEDGER`,
-   `REFUND_VAULT_IDS` and `FACILITATOR_URL`. `CRON_SECRET` is generated and shared with the crons.
+   `REFUND_VAULT_IDS` and `FACILITATOR_URL`, and `CRON_SECRET` (also set as a repository secret for
+   the `studio-cron` workflow).
 3. Check `/api/ops/health`: indexer lag must stay under 50% of RPC retention.
 
 [`vercel.json`](vercel.json) keeps the same two schedules for a Vercel deployment.
@@ -225,11 +242,14 @@ DATABASE_URL="<hosted-postgres-url>" pnpm db:migrate
 | [`templates/pollar-studio`](templates/pollar-studio) | Storefront template for Pollar Studio sellers |
 | [`docs`](docs) | PRD, architecture, essentials, project structure |
 
-## Testnet pacts to index
+## Testnet pacts
 
-These are the pacts Studio will index and anchor first. Every MVP scenario ran as real testnet
-transactions on 2026-10-29 ([Pactwright-Kit testnet e2e](https://github.com/Pactwright/Pactwright-Kit/tree/main/e2e/testnet)).
-Studio doesn't show them yet: reading events from Stellar RPC (S-02) and anchoring (S-04) come next.
+Every MVP scenario ran as real testnet transactions on 2026-10-29
+([Pactwright-Kit testnet e2e](https://github.com/Pactwright/Pactwright-Kit/tree/main/e2e/testnet)).
+The escrow (M2) pacts are on the `pact` contract, so Studio indexes them; exact-refund (M0) purchases
+are direct payments, not on-chain pacts, so they don't appear yet. One pact to open: the one the
+hosted verifier judged with its real model,
+[`40725564…5c55`](https://pactwright-studio-testnet.onrender.com/pact/4072556402d709463f7cb888a4a9e03b061d906f0b7ca5c49ebb2eec4e7d5c55).
 
 | Scenario | Outcome | Transactions |
 |---|---|---|
@@ -243,11 +263,11 @@ Studio doesn't show them yet: reading events from Stellar RPC (S-02) and anchori
 
 ## Project status
 
-The indexer and anchorer work against testnet. Next:
+Studio is live on testnet, indexing and anchoring on a schedule. Next:
 
-1. Deploy to testnet with a public URL (S-10).
-2. Backfill from a history source when the indexer falls behind RPC retention (S-03).
-3. Index M0 pacts once the facilitator's `pact` scheme reports them (X-*).
+1. Real data for the seller and agent-budget pages: registration and sign-in.
+2. Index exact-refund (M0) purchases, which aren't pacts on-chain.
+3. Hold the anchorer key in a KMS (`ANCHORER_SECRET_REF`) before any mainnet deployment.
 
 [ROADMAP.md](ROADMAP.md) tracks every task. Every pull request updates it.
 
