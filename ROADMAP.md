@@ -67,6 +67,7 @@ Dashboards.
 
 | Date | PR / change | Tasks | Summary |
 |---|---|---|---|
+| 2026-10-30 | deps | — | GitHub Actions: actions/checkout v7, actions/setup-node v7, pnpm/action-setup v6, in one change (replaces Dependabot #1, #2 and #3, which edit adjacent lines and would conflict with each other). |
 | 2026-10-30 | #32 | — (S-11) | Design direction changed to web3 blended with the tactile pieces that carry meaning: dark block-grid base, glass panels with the brand's teal-to-indigo gradient, a holographic foil seal, neon state stamps, and the timeline as a chain of blocks. Unbounded, Manrope and JetBrains Mono (on-chain values only). |
 | 2026-10-29 | #32 | S-11 → `[x]` | Studio styled for the first time: security-printing design (cheque paper, guilloché, foil seal, rubber-stamp states, perforated timeline stubs), pact lookup and recent-pacts ledger on the home page, plain-language amounts and events (`lib/format.ts`). |
 | 2026-10-29 | #31 | S-03 → `[~]` | Crosscheck: the HTTP history source returned JSON, so `pact_id` arrived as text and every backfilled event was dropped while the cursor advanced; it now reads base64-XDR events, requires `scannedThroughLedger`, and an archival-RPC source (`HISTORY_RPC_URL`) is added. `studio-cron` never ran (no secrets) and silently skipped when unconfigured; it now fails loudly and schedules the hourly anchor. |
