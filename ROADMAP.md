@@ -6,8 +6,8 @@
 
 | | |
 |---|---|
-| Last updated | 2026-10-29 |
-| Progress | **15 / 20 tasks (75%)** |
+| Last updated | 2026-10-30 |
+| Progress | **16 / 21 tasks (76%)** |
 
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (ADR) · owner `core`/`wave` · size `T`/`M`/`H`.
 
@@ -16,7 +16,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (ADR) · 
 | Section | Tasks | Done | % |
 |---|---|---|---|
 | Foundations (this repo) | 6 | 4 | 67% |
-| Phase 5 — Studio MVP | 10 | 8 | 80% |
+| Phase 5 — Studio MVP | 11 | 9 | 82% |
 | Phase 7 — v1 | 2 | 2 | 100% |
 | Phase 9 — v2 | 1 | 1 | 100% |
 | Cross-cutting | 1 | 0 | 0% |
@@ -46,6 +46,7 @@ Public pact pages and certificates backed by an indexer and anchorer.
 - [x] **S-08** Stellar Expert links per network — wave · T · S-06 (#18, 2026-10-28)
 - [x] **S-09** Playwright e2e for both pages — wave · M · S-07 (#21, 2026-10-28)
 - [~] **S-10** Deploy studio (testnet) — core · T · S-09 — deployed on Render (`pactwright-studio-testnet.onrender.com`, ops health green), but the cron that calls `/api/sync` and `/api/anchor` has never run: the repo has no `STUDIO_URL` / `CRON_SECRET` secrets, and the hourly anchor wasn't scheduled (fixed in #31)
+- [x] **S-11** Visual design: the pages had Tailwind class names but no styling — core · M · S-06, S-07 · Done when: every page is styled, readable at 390 px, and the e2e tests pass unchanged (#32, 2026-10-29)
 
 ## Phase 7 — v1
 
@@ -66,6 +67,8 @@ Dashboards.
 
 | Date | PR / change | Tasks | Summary |
 |---|---|---|---|
+| 2026-10-30 | #32 | — (S-11) | Design direction changed to web3 blended with the tactile pieces that carry meaning: dark block-grid base, glass panels with the brand's teal-to-indigo gradient, a holographic foil seal, neon state stamps, and the timeline as a chain of blocks. Unbounded, Manrope and JetBrains Mono (on-chain values only). |
+| 2026-10-29 | #32 | S-11 → `[x]` | Studio styled for the first time: security-printing design (cheque paper, guilloché, foil seal, rubber-stamp states, perforated timeline stubs), pact lookup and recent-pacts ledger on the home page, plain-language amounts and events (`lib/format.ts`). |
 | 2026-10-29 | #31 | S-03 → `[~]` | Crosscheck: the HTTP history source returned JSON, so `pact_id` arrived as text and every backfilled event was dropped while the cursor advanced; it now reads base64-XDR events, requires `scannedThroughLedger`, and an archival-RPC source (`HISTORY_RPC_URL`) is added. `studio-cron` never ran (no secrets) and silently skipped when unconfigured; it now fails loudly and schedules the hourly anchor. |
 | 2026-10-29 | #30 | S-10 stays `[~]` | Adjust Render Blueprint to free tier (`plan: free` for web and Postgres DB) and add GitHub Actions `studio-cron` workflow for 5-min indexer sync and hourly anchor triggers without requiring a credit card. (refs #26) |
 | 2026-10-29 | #29 | S-03 → `[x]` | History-source backfill: fetch historical `pact` and RefundVault events via HistorySource when cursor is behind RPC retention, decode and persist idempotently, advance cursor only through verified scanned ledgers; `syncWithHistory` resumes RPC sync without skipping any events. |

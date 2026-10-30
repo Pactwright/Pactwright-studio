@@ -9,6 +9,12 @@ export interface PactDetails {
   events: PactEventRow[];
 }
 
+/** The most recently opened pacts, newest first. */
+export async function listRecentPacts(limit = 8): Promise<PactRow[]> {
+  const { rows } = await db().query<PactRow>("SELECT * FROM pacts ORDER BY created_at DESC LIMIT $1", [limit]);
+  return rows;
+}
+
 export async function getPactById(pactId: string): Promise<PactDetails | null> {
   const pool = db();
   const pactResult = await pool.query<PactRow>(
