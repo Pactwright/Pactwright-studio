@@ -67,6 +67,7 @@ Dashboards.
 
 | Date | PR / change | Tasks | Summary |
 |---|---|---|---|
+| 2026-10-30 | #32 | — (S-11) | Mobile audit and fixes: the header no longer takes a quarter of a phone screen (one swipeable nav row; sticky only on larger screens), 16px form text (no iOS zoom on focus), 44px touch targets and 24px minimum for every pointer, and no overflow at 320px or at 200% text. Checked across 6 viewports including landscape. |
 | 2026-10-30 | #32 | — (S-11) | Design direction changed to web3 blended with the tactile pieces that carry meaning: dark block-grid base, glass panels with the brand's teal-to-indigo gradient, a holographic foil seal, neon state stamps, and the timeline as a chain of blocks. Unbounded, Manrope and JetBrains Mono (on-chain values only). |
 | 2026-10-29 | #32 | S-11 → `[x]` | Studio styled for the first time: security-printing design (cheque paper, guilloché, foil seal, rubber-stamp states, perforated timeline stubs), pact lookup and recent-pacts ledger on the home page, plain-language amounts and events (`lib/format.ts`). |
 | 2026-10-29 | #31 | S-03 → `[~]` | Crosscheck: the HTTP history source returned JSON, so `pact_id` arrived as text and every backfilled event was dropped while the cursor advanced; it now reads base64-XDR events, requires `scannedThroughLedger`, and an archival-RPC source (`HISTORY_RPC_URL`) is added. `studio-cron` never ran (no secrets) and silently skipped when unconfigured; it now fails loudly and schedules the hourly anchor. |

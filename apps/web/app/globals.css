@@ -97,9 +97,9 @@ code,
 /* ---------- Chrome ---------- */
 
 .site-head {
-  position: sticky;
-  top: 0;
+  position: relative;
   z-index: 20;
+  max-width: 100%;
   padding: 14px max(24px, calc((100vw - 1032px) / 2));
   display: flex;
   align-items: center;
@@ -115,6 +115,8 @@ code,
   display: flex;
   align-items: center;
   gap: 12px;
+  min-width: 0;
+  overflow-wrap: anywhere;
   text-decoration: none;
   color: var(--text-strong);
   font-family: var(--display);
@@ -153,6 +155,8 @@ code,
   margin: 0 auto;
   padding: 40px 24px 72px;
   display: grid;
+  /* minmax(0, …): an implicit column can't shrink below its widest content, which overflowed at large text sizes. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 36px;
 }
 
@@ -304,6 +308,11 @@ code,
   gap: 24px;
 }
 
+/* Let the ID column shrink beside the seal, so long IDs and large text wrap instead of overflowing. */
+.pact-head > div {
+  min-width: 0;
+}
+
 .panel .pact-head h1,
 .panel .id-heading {
   font-family: var(--mono-face);
@@ -405,7 +414,9 @@ code,
 }
 
 .stamp--large {
-  font-size: var(--step-3);
+  /* Capped by the viewport so the stamp never runs off a narrow screen, even at large text sizes. */
+  font-size: min(var(--step-3), 11vw);
+  max-width: 100%;
   border-width: 3px;
   border-radius: 12px;
   outline-offset: 5px;
@@ -454,6 +465,7 @@ code,
   list-style: none;
   margin: 0;
   padding: 0 0 0 calc(var(--rail) * 2 + 4px);
+  grid-template-columns: minmax(0, 1fr);
 }
 
 /* The chain itself: a glowing rail linking the blocks. */
@@ -589,7 +601,8 @@ code,
 .field {
   width: 100%;
   font-family: var(--mono-face);
-  font-size: 0.9375rem;
+  /* 16px: below this, iOS zooms the page when the field is focused. */
+  font-size: 1rem;
   color: var(--text);
   background: rgba(7, 11, 23, 0.65);
   border: 1px solid var(--hairline-strong);
@@ -827,14 +840,94 @@ code,
   color: var(--text);
 }
 
+/* ---------- Header: sticky only where the screen can spare the room ---------- */
+
+@media (min-width: 721px) and (min-height: 501px) {
+  .site-head {
+    position: sticky;
+    top: 0;
+  }
+}
+
+/* ---------- Target sizes ---------- */
+
+/* Standalone links in values, tables and notes: enlarge the target without moving the layout
+   (padding, offset by an equal negative margin). At least 24px for every pointer; 44px on touch below. */
+.value a,
+.ledger td a,
+.block-meta a,
+.prose a,
+.tile-go {
+  display: inline-block;
+  padding-block: 4px;
+  margin-block: -4px;
+}
+
+.raw-event summary {
+  padding-block: 3px;
+}
+
+@media (pointer: coarse) {
+  .site-nav a {
+    padding-block: 12px;
+    min-width: 44px;
+    text-align: center;
+  }
+  .brand {
+    padding-block: 4px;
+  }
+  .chooser a {
+    padding-block: 12px;
+  }
+  .value a,
+  .ledger td a,
+  .block-meta a,
+  .prose a,
+  .tile-go {
+    padding-block: 12px;
+    margin-block: -12px;
+  }
+  .raw-event summary {
+    padding-block: 12px;
+    margin-block: -8px;
+  }
+}
+
 /* ---------- Small screens ---------- */
 
 @media (max-width: 720px) {
   .shell {
     padding: 24px 16px 56px;
   }
+  /* Brand on one row, the nav as one swipeable row under it, instead of wrapping onto several rows. */
   .site-head {
-    padding: 12px 16px;
+    flex-direction: column;
+    /* nowrap: in a wrapping column, each line sizes to its content, so "stretch" made the brand and
+       nav as wide as their text instead of the screen. */
+    flex-wrap: nowrap;
+    align-items: stretch;
+    gap: 4px;
+    padding: 10px 16px 0;
+  }
+  .site-nav {
+    flex-wrap: nowrap;
+    gap: 0 22px;
+    overflow-x: auto;
+    margin: 0 -16px;
+    /* The extra end padding lets the last link scroll clear of the fade. */
+    padding: 0 56px 0 16px;
+    scrollbar-width: none;
+    -webkit-mask-image: linear-gradient(90deg, #000 85%, transparent);
+    mask-image: linear-gradient(90deg, #000 85%, transparent);
+  }
+  .site-nav::-webkit-scrollbar {
+    display: none;
+  }
+  .site-nav a {
+    white-space: nowrap;
+    /* Don't shrink: the row scrolls instead. (min-width replaces the min-content floor, so without this
+       the links shrank and their text overlapped.) */
+    flex: none;
   }
   .site-foot {
     padding-left: 16px;
@@ -856,7 +949,7 @@ code,
     --rail: 10px;
   }
   .block {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
   .block-head {
     border-right: 0;
