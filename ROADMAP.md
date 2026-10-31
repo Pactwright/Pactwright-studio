@@ -7,7 +7,7 @@
 | | |
 |---|---|
 | Last updated | 2026-10-31 |
-| Progress | **16 / 21 tasks (76%)** |
+| Progress | **17 / 21 tasks (81%)** |
 
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (ADR) · owner `core`/`wave` · size `T`/`M`/`H`.
 
@@ -15,7 +15,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (ADR) · 
 
 | Section | Tasks | Done | % |
 |---|---|---|---|
-| Foundations (this repo) | 6 | 4 | 67% |
+| Foundations (this repo) | 6 | 5 | 83% |
 | Phase 5 — Studio MVP | 11 | 9 | 82% |
 | Phase 7 — v1 | 2 | 2 | 100% |
 | Phase 9 — v2 | 1 | 1 | 100% |
@@ -27,7 +27,7 @@ Repo-level setup tasks.
 
 - [x] **F-02** Create the 3 repos with licenses (contracts MIT, kit Apache-2.0, studio MIT), README skeleton, `NOTICE` crediting all 7 projects — core · T · F-01 · project_structure §6 (pushed, 2026-10-28)
 - [x] **F-03** Add `ROADMAP.md`, `AGENTS.md`, `CONTRIBUTING.md` (with the roadmap rule) and copies of the 4 design docs to each repo — core · T · F-02 · Done when: every repo states the roadmap rule. (pushed, 2026-10-28)
-- [~] **F-04** Labels (`Stellar Wave`, `complexity:*`, `area:*`, `good first issue`, `core-team-only`), issue template, PR template with a "ROADMAP.md updated" checkbox — core · T · F-02 · project_structure §7
+- [x] **F-04** Labels (`Stellar Wave`, `complexity:*`, `area:*`, `good first issue`, `core-team-only`), issue template, PR template with a "ROADMAP.md updated" checkbox — core · T · F-02 · project_structure §7 (verified against the live repo 2026-10-31: `gh api repos/Pactwright/Pactwright-studio/labels` returns all three named labels plus 3 `complexity:*` and 10 `area:*`, and `.github/` carries `ISSUE_TEMPLATE/` and `pull_request_template.md`)
 - [~] **F-05** `roadmap-check` CI workflow in all 3 repos: fails a PR that doesn't modify `ROADMAP.md` — core · M · F-02 · Done when: a PR without a roadmap change fails CI.
 - [x] **F-06** `CODEOWNERS` for core-team-only paths — core · T · F-02 · project_structure §7 (#23, 2026-10-28)
 - [x] **F-07** OpenSSF Scorecard, Dependabot, branch protection (CI + review required) — core · T · F-02 (#23, 2026-10-28)
@@ -67,6 +67,7 @@ Dashboards.
 
 | Date | PR / change | Tasks | Summary |
 |---|---|---|---|
+| 2026-10-31 | — | F-04 `[x]` | XC-12 roadmap-sync audit across the master and all three repo roadmaps, done by parsing and diffing every task row by ID rather than by eye. This repo's `F-04` was still `[~]` but is verifiably complete: `gh api repos/Pactwright/Pactwright-studio/labels` returns `Stellar Wave`, `good first issue` and `core-team-only` plus 3 `complexity:*` and 10 `area:*` labels, and `.github/` carries `ISSUE_TEMPLATE/` and `pull_request_template.md` — so it is now `[x]` and this repo reads 17/21 (81%). Two other rows here were **right and the master was wrong**: the master had `S-10` as done, but Render auto-deploy has never fired (every deploy in this service's history is `api` or `blueprint sync`, and Live was 15 commits behind until deployed by hand today), and its `XC-03` was closed although `/api/ops/health` returns only 2 of the 4 named signals — `indexer_lag` (1004→1005 ledgers across two reads six seconds apart) and `pending_certificates` (0) are measured, sponsor balance and verifier error rate are not. Both reopened in the master. `F-05` stays `[~]` deliberately: `roadmap-check.yml` exists here, but no PR has been *seen* to fail for want of a roadmap change in this repo, which is the task's own Done-when. |
 | 2026-10-31 | docs/tollcraft-shape | — (README) | Matched the reference README exactly: dropped the `## Contents` block (the Tollcraft README has none), and replaced the socials placeholder with the real community links, Discord (`discord.gg/4WFU6fwPe`) and Telegram (`t.me/Pactwright`). No other content changed. |
 | 2026-10-30 | docs/readme-template | — (README) | `README.md` restructured to the `Tollcraft/soroban-budget-assert` section architecture (Overview · Architecture · Receipts · Anchoring and dashboards · Supported Versions & Compatibility · Quick Start · Measurements · Testnet pacts · Community & Maintainers · Contributing · License), with every verified claim, table, mermaid diagram, command block and transaction link re-homed rather than rewritten, and the four FAQ answers folded into a "Trust and privacy" section. Figures refreshed against today's measurements: **62 unit tests across 12 suites**, the 3 Playwright specs marked CI-only (`e2e.yml`), OpenSSF Scorecard badge kept while the stale "48 unit tests" and "not deployed yet" badges were dropped, and the live `pactwright-studio-testnet.onrender.com` deployment plus backfill status recorded. Anchoring evidence unchanged: batch 1, 9 receipts, `be51068e…`. Every relative link checked against the tree. No code or behavior change, so no task status moved. |
 | 2026-10-30 | README | — | README: live on testnet (was 'not deployed'); 62 unit and 3 e2e tests (was 48); backfill works; scheduling by the studio-cron workflow, not Render crons; the home page; testnet pacts now visible in Studio; current next steps; a short section on the interface; links to Studio and the docs. |
