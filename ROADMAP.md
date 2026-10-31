@@ -2,7 +2,9 @@
 
 > **⚠ Every contribution updates this file:** task status, progress counts and one
 > Update log line. CI (`roadmap-check`) fails PRs that don't. Rules: [`AGENTS.md`](AGENTS.md) §1.
-> Task IDs are global; the master roadmap lives in the Pactwright workspace and is synced weekly (XC-12).
+> Task IDs are global; the master roadmap is
+> [`pactwright.github.io/ROADMAP.md`](https://github.com/Pactwright/pactwright.github.io/blob/main/ROADMAP.md),
+> and CI there (`roadmap-sync`) fails if this file disagrees with it about any status or ID (XC-12).
 
 | | |
 |---|---|
@@ -67,6 +69,7 @@ Dashboards.
 
 | Date | PR / change | Tasks | Summary |
 |---|---|---|---|
+| 2026-10-31 | — | — (header) | The header pointed at a master roadmap that was not in version control at all ("the Pactwright workspace, synced weekly"), which is how the master and these repos drifted out of agreement in the first place. XC-12 is now a check rather than a reminder: the master lives at `pactwright.github.io/ROADMAP.md`, a `roadmap-sync` job there compares it with this file weekly and on every roadmap change, and it fails on an unknown ID, a status disagreement, a summary count its own rows don't support, or a task with no repo row and no `· home:` marker. Ran clean against this file on 2026-10-31 (21 tasks). No status changed here. |
 | 2026-10-31 | — | F-05 `[x]` | Proved this repo's `roadmap-check` has teeth instead of assuming it from the file existing: opened throwaway PR #38 with a deliberately **empty commit** (touches no files), watched the `roadmap` job fail in 4 s on run 41193166659, then closed it without merging and deleted the branch. That is the task's own Done-when, so F-05 closes here and this repo reads 18/21 (86%), Foundations 6/6. Part of the XC-12 roadmap-sync audit, which also reopened `S-10` and `XC-03` in the master (this repo had both right) and closed `F-04` on live label/template evidence (#37).
 | 2026-10-31 | — | F-04 `[x]` | XC-12 roadmap-sync audit across the master and all three repo roadmaps, done by parsing and diffing every task row by ID rather than by eye. This repo's `F-04` was still `[~]` but is verifiably complete: `gh api repos/Pactwright/Pactwright-studio/labels` returns `Stellar Wave`, `good first issue` and `core-team-only` plus 3 `complexity:*` and 10 `area:*` labels, and `.github/` carries `ISSUE_TEMPLATE/` and `pull_request_template.md` — so it is now `[x]` and this repo reads 17/21 (81%). Two other rows here were **right and the master was wrong**: the master had `S-10` as done, but Render auto-deploy has never fired (every deploy in this service's history is `api` or `blueprint sync`, and Live was 15 commits behind until deployed by hand today), and its `XC-03` was closed although `/api/ops/health` returns only 2 of the 4 named signals — `indexer_lag` (1004→1005 ledgers across two reads six seconds apart) and `pending_certificates` (0) are measured, sponsor balance and verifier error rate are not. Both reopened in the master. `F-05` stays `[~]` deliberately: `roadmap-check.yml` exists here, but no PR has been *seen* to fail for want of a roadmap change in this repo, which is the task's own Done-when. |
 | 2026-10-31 | docs/tollcraft-shape | — (README) | Matched the reference README exactly: dropped the `## Contents` block (the Tollcraft README has none), and replaced the socials placeholder with the real community links, Discord (`discord.gg/4WFU6fwPe`) and Telegram (`t.me/Pactwright`). No other content changed. |
