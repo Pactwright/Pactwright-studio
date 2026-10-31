@@ -149,7 +149,7 @@ export class RpcHistorySource implements HistorySource {
     }
     return {
       events: page.events.filter((e) => e.ledger <= toLedger),
-      scannedThroughLedger: Math.min(toLedger, page.latestLedger),
+      scannedThroughLedger: Math.min(toLedger, page.throughLedger),
     };
   }
 }

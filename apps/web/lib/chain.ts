@@ -64,25 +64,62 @@ export interface EventPage {
   /** Highest ledger the RPC has seen; the range was scanned up to here. */
   latestLedger: number;
   oldestLedger: number;
+  /**
+   * The ledger this read actually covers. Equal to `latestLedger` when the range was read to the end,
+   * and to the last event's ledger when the page budget stopped it early — so a caller can move its
+   * cursor to here and never mark events unread as read.
+   */
+  throughLedger: number;
 }
 
-/** All events of one contract from `startLedger` up to the RPC's latest ledger. */
-export async function contractEvents(config: ChainConfig, contractId: string, startLedger: number): Promise<EventPage> {
-  const s = server(config);
+/**
+ * What one `getEvents` round trip gives back, as the SDK shapes it. `topic`/`value` stay as ScVals
+ * because the caller decodes them; the ledger and event id are what paging turns on.
+ */
+export interface RpcEventPage {
+  events: { id: string; ledger: number; txHash: string; contractId: string; topic: xdr.ScVal[]; value: xdr.ScVal }[];
+  latestLedger: number;
+  oldestLedger: number;
+  /** Where the next page starts. This RPC returns one even when the range is exhausted. */
+  cursor?: string;
+}
+
+/**
+ * Reads every event of one contract from `startLedger` to the RPC's tip, following the cursor.
+ *
+ * Why the page size cannot end this loop, measured on `soroban-testnet.stellar.org` on 2026-10-31: one
+ * request for `limit: 200` over a busy window came back with exactly 100 events and another with exactly
+ * 200, from the same contract. How many events a page carries is the RPC's choice, so `events.length
+ * < limit` is true in the *middle* of a range — and that was the old stopping rule. The same window
+ * held 408 events, delivered as pages of 100, 100, 100, 100, 8, 0: an empty page is the only answer
+ * that means the range is finished.
+ */
+export async function paginateContractEvents(
+  fetchPage: (cursor?: string) => Promise<RpcEventPage>,
+  startLedger: number,
+  maxPages = MAX_PAGES_PER_READ,
+): Promise<EventPage> {
   const events: RawEvent[] = [];
-  let cursor: string | undefined;
+  const seen = new Set<string>();
   let latestLedger = 0;
   let oldestLedger = 0;
-  for (;;) {
-    const filters = [{ type: "contract" as const, contractIds: [contractId] }];
-    const page = cursor
-      ? await s.getEvents({ filters, cursor, limit: 200 })
-      : await s.getEvents({ filters, startLedger, limit: 200 });
+  let lastLedger = 0;
+  let cursor: string | undefined;
+  for (let pages = 0; ; pages++) {
+    if (pages >= maxPages) {
+      // Out of budget with more range left: report only what was read, so the caller's cursor stops
+      // here and the next pass continues instead of the range being marked as done.
+      return { events, latestLedger, oldestLedger, throughLedger: Math.max(startLedger - 1, lastLedger) };
+    }
+    const page = await fetchPage(cursor);
     latestLedger = page.latestLedger;
     oldestLedger = page.oldestLedger;
     for (const e of page.events) {
+      if (seen.has(e.id)) continue;
+      seen.add(e.id);
+      lastLedger = Math.max(lastLedger, e.ledger);
       events.push({
-        contractId,
+        contractId: e.contractId,
         ledger: e.ledger,
         txHash: e.txHash,
         id: e.id,
@@ -90,11 +127,46 @@ export async function contractEvents(config: ChainConfig, contractId: string, st
         value: scValToNative(e.value),
       });
     }
-    if (page.events.length < 200) break;
+    if (page.events.length === 0 || !page.cursor) {
+      return { events, latestLedger, oldestLedger, throughLedger: Math.max(latestLedger, lastLedger) };
+    }
+    if (page.cursor === cursor) {
+      throw new Error(
+        `getEvents repeated cursor ${page.cursor} instead of advancing; stopped after ${events.length} events rather than looping forever`,
+      );
+    }
     cursor = page.cursor;
   }
-  return { events, latestLedger, oldestLedger };
 }
+
+/**
+ * How many `getEvents` pages one read may request. At the ~100 events a page carries this is about
+ * 5,000 events per pass: enough to keep up from a few minutes behind, and bounded so a pass lagging by
+ * months takes several runs rather than one unbounded one inside a request timeout.
+ */
+const MAX_PAGES_PER_READ = 50;
+
+/** Asked for 200 because that is what the indexer used to assume; the RPC answers with ~100. */
+const EVENT_PAGE_LIMIT = 200;
+
+/**
+ * All events of one contract from `startLedger` up to the RPC's latest ledger.
+ *
+ * Only the first request carries `startLedger`: sending a cursor *and* a start ledger makes the RPC
+ * ignore the cursor and re-serve the same page forever (also measured on testnet the same day).
+ */
+export async function contractEvents(config: ChainConfig, contractId: string, startLedger: number): Promise<EventPage> {
+  const s = server(config);
+  const filters = [{ type: "contract" as const, contractIds: [contractId] }];
+  return paginateContractEvents(
+    async (cursor) =>
+      (await (cursor
+        ? s.getEvents({ filters, cursor, limit: EVENT_PAGE_LIMIT })
+        : s.getEvents({ filters, startLedger, limit: EVENT_PAGE_LIMIT }))) as unknown as RpcEventPage,
+    startLedger,
+  );
+}
+
 
 /** Reads a contract without sending a transaction (simulation only). */
 export async function readContract(

@@ -125,9 +125,9 @@ export async function fetchEvents(
   source: { name: string; contractId: string },
   fromLedger: number,
   config: ChainConfig = chainConfig(),
-): Promise<{ events: DecodedEvent[]; latestLedger: number; oldestLedger: number }> {
+): Promise<{ events: DecodedEvent[]; latestLedger: number; oldestLedger: number; throughLedger: number }> {
   const page = await contractEvents(config, source.contractId, fromLedger);
   const decode = source.name === "pact" ? decodePactEvent : decodeRefundVaultEvent;
   const events = page.events.map(decode).filter((e): e is DecodedEvent => e !== null);
-  return { events, latestLedger: page.latestLedger, oldestLedger: page.oldestLedger };
+  return { events, latestLedger: page.latestLedger, oldestLedger: page.oldestLedger, throughLedger: page.throughLedger };
 }
