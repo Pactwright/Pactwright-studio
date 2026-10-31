@@ -30,29 +30,6 @@
 > every proof verifies on-chain with `verify_receipt`. Testnet only, not audited. The seller and
 > agent-budget pages still show sample data. [What works today](#what-works-today) has the details.
 
-## Contents
-
-1. [Overview](#-overview)
-2. [Architecture](#️-architecture)
-3. [How a receipt becomes provable](#how-a-receipt-becomes-provable)
-4. [Trust and privacy](#trust-and-privacy)
-5. [Testnet pacts](#-testnet-pacts)
-6. [Anchoring and dashboards](#-anchoring-and-dashboards)
-7. [What works today](#what-works-today)
-8. [Supported Versions & Compatibility](#️-supported-versions--compatibility)
-9. [What "Supported" means here](#what-supported-means-here)
-10. [Compatibility matrix](#compatibility-matrix)
-11. [Quick Start](#-quick-start)
-12. [1. Installation](#1-installation)
-13. [2. Configuration](#2-configuration)
-14. [3. Usage](#3-usage)
-15. [Deploy](#deploy)
-16. [Measurements](#-measurements)
-17. [Community & Maintainers](#-community--maintainers)
-18. [Contributing](#️-contributing)
-19. [Contributors](#‍-contributors)
-20. [License](#license)
-
 ## 📖 Overview
 
 An escrow contract settles the money, but people still need to *see* what happened and to *prove* it later. Studio is the public face of a pact: it follows the contract on-chain, renders one page per purchase, and turns each final outcome into a receipt that anyone can check without trusting Studio, GitHub, or whoever happens to be hosting the page.
@@ -303,8 +280,10 @@ What is next, from [`ROADMAP.md`](ROADMAP.md): real data for the seller and agen
 
 ## 🤝 Community & Maintainers
 
-<!-- socials: add Discord / Telegram / X links here when they exist. -->
+Join the discussion and get support:
 
+- **Discord**: [discord.gg/4WFU6fwPe](https://discord.gg/4WFU6fwPe)
+- **Telegram**: [t.me/Pactwright](https://t.me/Pactwright)
 - Documentation hub: [pactwright.github.io/docs](https://pactwright.github.io/docs/)
 - The other repositories: [Contracts](https://github.com/Pactwright/Pactwright-contracts) · [Kit](https://github.com/Pactwright/Pactwright-Kit)
 - Security reports: see [`SECURITY.md`](SECURITY.md) — privately, never a public issue.
