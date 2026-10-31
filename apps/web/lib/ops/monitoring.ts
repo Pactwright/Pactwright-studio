@@ -13,11 +13,21 @@ export interface SystemMetrics {
   verifierErrorRequests?: number;
 }
 
+/** The four signals `/api/ops/health` is supposed to report (ROADMAP XC-03), named as their probes are. */
+export type SignalName = "sponsor_balance" | "indexer_lag" | "pending_certificates" | "verifier_error_rate";
+
+/** A signal the endpoint tried to read and could not, with the error that said why. */
+export interface UnmeasuredSignal {
+  name: SignalName;
+  reason: string;
+}
+
 export interface ProbeResult {
   name: string;
   ok: boolean;
-  value: number;
-  threshold: number;
+  /** Absent when the signal could not be measured — a probe reports no number it did not read. */
+  value?: number;
+  threshold?: number;
   alert?: string;
 }
 
@@ -101,9 +111,11 @@ export function probeVerifierErrorRate(
 }
 
 /**
- * Runs all system health probes and gathers triggered alerts.
+ * Runs the probes for the metrics that were measured, then reports each `unmeasured` signal as a
+ * failing probe. A signal nobody could read is not a healthy signal, and an endpoint that simply
+ * left it out would make an outage look like an all-clear (ROADMAP XC-03).
  */
-export function evaluateSystemHealth(metrics: SystemMetrics): SystemHealthReport {
+export function evaluateSystemHealth(metrics: SystemMetrics, unmeasured: UnmeasuredSignal[] = []): SystemHealthReport {
   const probes: ProbeResult[] = [];
   if (metrics.sponsorBalanceXlm !== undefined) probes.push(probeSponsorBalance(metrics.sponsorBalanceXlm));
   if (metrics.indexerLagLedgers !== undefined) {
@@ -114,6 +126,9 @@ export function evaluateSystemHealth(metrics: SystemMetrics): SystemHealthReport
   }
   if (metrics.verifierTotalRequests !== undefined && metrics.verifierErrorRequests !== undefined) {
     probes.push(probeVerifierErrorRate(metrics.verifierTotalRequests, metrics.verifierErrorRequests));
+  }
+  for (const { name, reason } of unmeasured) {
+    probes.push({ name, ok: false, alert: `CRITICAL: ${name} could not be measured (${reason}); its threshold was not checked.` });
   }
 
   const alerts = probes.map((p) => p.alert).filter((a): a is string => Boolean(a));

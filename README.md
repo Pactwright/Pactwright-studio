@@ -187,6 +187,8 @@ pnpm db:seed                  # loads fixture pacts, receipts and accounts
 | `INDEX_START_LEDGER`, `REFUND_VAULT_IDS` | First ledger to index; RefundVaults whose refunds are indexed |
 | `ANCHORER_SECRET` | `ReceiptAnchor` admin key, testnet only (refused on pubnet) |
 | `ANCHORER_SECRET_REF` | KMS reference to the anchorer key for pubnet (not supported yet) |
+| `VERIFIER_URL` | the verifier whose verdict counters feed the `verifier_error_rate` probe (`/api/ops/health`) |
+| `SPONSOR_ACCOUNT` | address the low-balance probe watches, when the signing key is not in the environment (pubnet) |
 | `CRON_SECRET` | Protects `/api/sync` and `/api/anchor` |
 
 ### 3. Usage
@@ -236,7 +238,10 @@ Testnet is live at [pactwright-studio-testnet.onrender.com](https://pactwright-s
 
 1. Render Dashboard → **New → Blueprint** → this repo.
 2. Fill in the `sync: false` values when asked. They stay in Render's secret store: `ANCHORER_SECRET` (the `ReceiptAnchor` admin key, testnet only), `INDEX_START_LEDGER`, `REFUND_VAULT_IDS` and `FACILITATOR_URL`, and `CRON_SECRET` (also set as a repository secret for the `studio-cron` workflow).
-3. Check `/api/ops/health`: indexer lag must stay under 50% of RPC retention.
+3. Check `/api/ops/health`: it reports all four XC-03 signals — sponsor balance, indexer lag (must stay
+   under 50% of RPC retention), pending certificates and the verifier error rate. A signal it cannot
+   measure is listed as an alert, never as a pass, so an unreadable verifier or a missing `VERIFIER_URL`
+   shows up as a 503 rather than as an all-clear.
 
 [`vercel.json`](vercel.json) keeps the same two schedules for a Vercel deployment.
 
