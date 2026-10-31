@@ -243,7 +243,7 @@ Testnet is live at [pactwright-studio-testnet.onrender.com](https://pactwright-s
    measure is listed as an alert, never as a pass, so an unreadable verifier or a missing `VERIFIER_URL`
    shows up as a 503 rather than as an all-clear.
 
-[`vercel.json`](vercel.json) keeps the same two schedules for a Vercel deployment.
+Scheduling lives in one place: `.github/workflows/studio-cron.yml` calls `/api/sync` and `/api/anchor` with the `CRON_SECRET` bearer token. There is no Vercel deployment, so the repo no longer carries a second, silently-dead set of cron definitions next to the real ones.
 
 ```bash
 DATABASE_URL="<hosted-postgres-url>" pnpm db:migrate
