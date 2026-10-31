@@ -11,27 +11,17 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Pactwright/Pactwright-studio/actions/workflows/ci.yml"><img src="https://img.shields.io/badge/tests-62_unit_%2B_3_e2e-2DD4BF?style=for-the-badge&labelColor=0B1220" alt="62 unit tests plus 3 end-to-end tests"></a>
-  <a href="#what-works-today"><img src="https://img.shields.io/badge/anchoring-testnet-2DD4BF?style=for-the-badge&labelColor=0B1220" alt="Anchoring on testnet"></a>
-  <a href="https://pactwright-studio-testnet.onrender.com"><img src="https://img.shields.io/badge/deployment-live_on_testnet-2DD4BF?style=for-the-badge&labelColor=0B1220" alt="Live on testnet"></a>
-  <a href="https://github.com/Pactwright/Pactwright-contracts"><img src="https://img.shields.io/badge/contract-testnet-6366F1?style=for-the-badge&labelColor=0B1220" alt="Contract on testnet"></a>
-  <a href="#license"><img src="https://img.shields.io/badge/license-MIT-94A3B8?style=for-the-badge&labelColor=0B1220" alt="MIT license"></a>
-</p>
-
-<p align="center">
-  <a href="https://pactwright-studio-testnet.onrender.com"><b>Open Studio</b></a> ·
-  <a href="https://pactwright.github.io/docs/"><b>Documentation</b></a> ·
-  <a href="#in-60-seconds"><b>In 60 seconds</b></a> ·
-  <a href="#how-a-receipt-becomes-provable"><b>How a receipt becomes provable</b></a> ·
-  <a href="#what-works-today"><b>What works today</b></a> ·
-  <a href="#run-it-locally"><b>Run it locally</b></a> ·
-  <a href="#license"><b>License</b></a> ·
-  <a href="https://github.com/Pactwright/Pactwright-contracts">Contracts</a> ·
-  <a href="https://github.com/Pactwright/Pactwright-Kit">Kit</a>
-</p>
-
-<p align="center">
+  <a href="https://github.com/Pactwright/Pactwright-studio/actions/workflows/ci.yml"><img src="https://github.com/Pactwright/Pactwright-studio/actions/workflows/ci.yml/badge.svg" alt="CI status"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT license"></a>
   <a href="https://scorecard.dev/viewer/?uri=github.com/Pactwright/Pactwright-studio"><img src="https://api.scorecard.dev/projects/github.com/Pactwright/Pactwright-studio/badge" alt="OpenSSF Scorecard"></a>
+</p>
+
+<p align="center">
+  <a href="https://pactwright-studio-testnet.onrender.com"><strong>Open Studio</strong></a> ·
+  <a href="https://pactwright.github.io/docs/"><strong>Documentation</strong></a> ·
+  <a href="#-quick-start"><strong>Quick start</strong></a> ·
+  <a href="#-anchoring-and-dashboards"><strong>Anchoring</strong></a>
+  <!-- demo: add a Docs · Dashboard · Demo link row here when a screencast exists -->
 </p>
 
 > [!IMPORTANT]
@@ -42,34 +32,30 @@
 
 ## Contents
 
-1. [In 60 seconds](#in-60-seconds)
-2. [Why this exists](#why-this-exists)
-3. [Who uses it](#who-uses-it)
-4. [The interface](#the-interface)
-5. [How a receipt becomes provable](#how-a-receipt-becomes-provable)
-6. [What works today](#what-works-today)
-7. [Pages and API](#pages-and-api)
-8. [Run it locally](#run-it-locally)
-9. [Deploy](#deploy)
-10. [Data model](#data-model)
-11. [Layout](#layout)
-12. [Testnet pacts](#testnet-pacts)
-13. [Project status](#project-status)
-14. [FAQ](#faq)
-15. [Built on](#built-on)
-16. [Contributing](#contributing)
-17. [License](#license)
+1. [Overview](#-overview)
+2. [Architecture](#️-architecture)
+3. [How a receipt becomes provable](#how-a-receipt-becomes-provable)
+4. [Trust and privacy](#trust-and-privacy)
+5. [Testnet pacts](#-testnet-pacts)
+6. [Anchoring and dashboards](#-anchoring-and-dashboards)
+7. [What works today](#what-works-today)
+8. [Supported Versions & Compatibility](#️-supported-versions--compatibility)
+9. [What "Supported" means here](#what-supported-means-here)
+10. [Compatibility matrix](#compatibility-matrix)
+11. [Quick Start](#-quick-start)
+12. [1. Installation](#1-installation)
+13. [2. Configuration](#2-configuration)
+14. [3. Usage](#3-usage)
+15. [Deploy](#deploy)
+16. [Measurements](#-measurements)
+17. [Community & Maintainers](#-community--maintainers)
+18. [Contributing](#️-contributing)
+19. [Contributors](#‍-contributors)
+20. [License](#license)
 
-## In 60 seconds
+## 📖 Overview
 
-- **What a pact is.** An AI agent's purchase held in escrow on Stellar. The buyer's money moves only when a verifier confirms delivery; otherwise it goes back. The [contract](https://github.com/Pactwright/Pactwright-contracts) runs on testnet.
-- **What Studio does.** It follows every pact on-chain and shows its timeline. It turns each final outcome into a receipt and anchors batches of receipts on Stellar. The result is a certificate anyone can check, with or without trusting Studio.
-- **What runs today.** A Next.js app, live on testnet: a home page with pact lookup and the latest pacts, the pact timeline, the certificate viewer, merchant and principal dashboards, the indexer and anchorer, ops health checks and a Postgres schema. It has 62 unit tests and 3 Playwright end-to-end tests in CI, plus a live testnet test that indexes, anchors and verifies real receipts.
-- **What's next.** Real data for the seller and agent-budget pages (registration and sign-in), indexing exact-refund (M0) purchases, and a KMS-held anchorer key before mainnet.
-
-## Why this exists
-
-An escrow contract settles the money, but people still need to *see* what happened and *prove* it later:
+An escrow contract settles the money, but people still need to *see* what happened and to *prove* it later. Studio is the public face of a pact: it follows the contract on-chain, renders one page per purchase, and turns each final outcome into a receipt that anyone can check without trusting Studio, GitHub, or whoever happens to be hosting the page.
 
 | Question | Without Studio | With Studio |
 |---|---|---|
@@ -79,30 +65,34 @@ An escrow contract settles the money, but people still need to *see* what happen
 | "How is my business doing?" | Spreadsheet the events | Merchant dashboard: revenue, refund and dispute rates, cost per route |
 | "What are my agents spending?" | Track every wallet by hand | Principal view: budgets and live pacts per agent |
 
-Anchoring each receipt in its own transaction would be expensive. Studio batches many receipts into
-one Merkle tree and anchors only its root, so a single small transaction covers hundreds of receipts.
-Each receipt can still be proven on its own.
+The interface keeps three objects that carry meaning: the Pactwright **seal**, which presses in when a certificate verifies; **stamps** for a pact's state (teal when the money moved as agreed, rose when it came back, indigo while it is in escrow); and the timeline as a **chain of blocks**, each labelled with its ledger. Amounts and events are in plain words ("1.00 USDC to the seller, 0.00 USDC back to the buyer"). It works without JavaScript for lookup, respects reduced motion, and has been audited at phone, tablet and desktop sizes, including at 200% text.
 
-## Who uses it
+### 🏗️ Architecture
 
-| Who | Page | What they see |
-|---|---|---|
-| **Anyone** | `/pact/<id>` | The public timeline of one pact, with Stellar Expert links per network |
-| **Anyone** | `/verify` | Paste a certificate and check its proof offline, then check the anchored root on-chain |
-| **Sellers** | `/merchant` | Revenue, refund and dispute rates, cost per route |
-| **Agent owners** | `/principal` | Budgets and live pacts for each agent they run |
-| **Operators** | `/api/ops/health` | Sponsor balance, indexer lag, pending certificates, verifier error rate |
+Five parts, and only one of them can move money (it cannot — the contract does):
 
-## The interface
+1. **Indexer** — reads `pact` and `RefundVault` events from Stellar RPC on a schedule, keeps one cursor per source, and writes idempotently, so a re-run never double-counts. If the cursor falls behind RPC retention it backfills from an archival RPC or an HTTP history source, and raises an alert at 50% of the retention window.
+2. **Receipt leaves** — when a pact reaches a final state (settled, released or refunded), its outcome is hashed into a leaf covering who paid whom, how much, and in which transaction. The leaf is byte for byte the contract's `receipt_leaf`, tested against its vectors, and every receipt keeps its leaf inputs so anyone can recompute it.
+3. **Anchorer** — collects pending leaves into a sorted-pair SHA-256 Merkle tree in Accensa's `ReceiptAnchor` format, bounded by a maximum batch size and a minimum interval. Each batch is recorded as a plan before it is sent; the next run reconciles plans against the chain first, so a batch is never anchored twice or lost.
+4. **Certificate** — the receipt plus the sibling hashes from leaf to root. Recompute the root offline and compare it with the anchored one; that is the whole proof, and it needs nothing from Studio.
+5. **Web app** — a Next.js app over the same Postgres: public timeline, certificate viewer, merchant and principal dashboards, and an ops health route.
 
-A dark, on-chain look that keeps three objects which carry meaning: the Pactwright **seal**, which
-presses in when a certificate verifies; **stamps** for a pact's state (teal when the money moved as
-agreed, rose when it came back, indigo while it's in escrow); and the timeline as a **chain of
-blocks**, each labelled with its ledger. Amounts and events are in plain words ("1.00 USDC to the
-seller, 0.00 USDC back to the buyer"). It works without JavaScript for lookup, respects reduced
-motion, and has been audited at phone, tablet and desktop sizes, including at 200% text.
+| Path | What |
+|---|---|
+| [`apps/web/app`](apps/web/app) | Next.js pages and API routes |
+| [`apps/web/lib/indexer`](apps/web/lib/indexer) | Event sources, decoding, cursor, backfill |
+| [`apps/web/lib/anchorer`](apps/web/lib/anchorer) | Reconcile → batch → anchor → proofs (core-team path) |
+| [`apps/web/lib/verify.ts`](apps/web/lib/verify.ts) | Receipt leaves and offline proof verification |
+| [`apps/web/lib/ops`](apps/web/lib/ops) | Monitoring signals |
+| [`apps/web/components`](apps/web/components) | Timeline, certificate card, transaction links |
+| [`apps/web/test`](apps/web/test) | Unit tests and Playwright specs |
+| [`migrations`](migrations) | Schema, migration runner and seed data |
+| [`templates/pollar-studio`](templates/pollar-studio) | Storefront template for Pollar Studio sellers |
+| [`docs`](docs) | PRD, architecture, essentials, project structure |
 
-## How a receipt becomes provable
+### How a receipt becomes provable
+
+Anchoring each receipt in its own transaction would be expensive, so Studio batches many receipts into one Merkle tree and anchors only its root. A single small transaction covers hundreds of receipts, and every receipt in it can still be proven on its own.
 
 ```mermaid
 flowchart LR
@@ -114,13 +104,39 @@ flowchart LR
     RA -->|verify_receipt| U
 ```
 
-1. **Index.** The indexer reads `pact` and `RefundVault` events from Stellar RPC, keeps a cursor and writes idempotently, so a re-run never double-counts. If it falls behind RPC retention, it backfills from a history source and raises an alert at 50% of the retention window.
-2. **Make a receipt.** When a pact reaches a final state (settled, released or refunded), its outcome is hashed into a receipt *leaf*. The leaf covers who paid whom, how much and in which transaction.
-3. **Batch.** The anchorer collects pending leaves into a sorted-pair SHA-256 Merkle tree, the same format as Accensa's `ReceiptAnchor`. A batch is limited by a maximum size and a minimum interval.
-4. **Anchor.** The tree's root is written on-chain with `anchor_batch`. If the process crashes between submitting and saving, the next run reconciles from the chain first.
-5. **Certify.** Each receipt gets its proof, the list of sibling hashes from leaf to root. Together they form the certificate. Anyone can recompute the root offline and compare it with the anchored one.
+### Trust and privacy
 
-## What works today
+**You do not have to trust Studio.** A certificate is a receipt plus a Merkle proof: recompute the root yourself and compare it with the anchored root, or call `verify_receipt` on the `ReceiptAnchor` contract directly. Studio only saves you the work.
+
+**If Studio goes down, nothing stops.** The money is never in Studio — the contract holds and moves it. Pacts keep working, and already-issued certificates stay verifiable against the anchored roots.
+
+**Pact data is public by design**, because the chain it comes from is public. The merchant and principal dashboards have no sign-in yet, so do not put private data in them before that lands.
+
+## 📊 Anchoring and dashboards
+
+Batch 1 anchored **9 receipts** in one transaction, signed by the `ReceiptAnchor` admin key: [`be51068e…`](https://stellar.expert/explorer/testnet/tx/be51068eea65b8f47799253ca45bd5e5d9c014d7cae0b873f19150658d8edfb0). Every proof in it verifies offline and with ReceiptAnchor's own `verify_receipt`.
+
+Who sees what:
+
+| Who | Page | What they see |
+|---|---|---|
+| **Anyone** | `/` | Pact lookup and the latest pacts |
+| **Anyone** | `/pact/<id>` | The public timeline of one pact, with Stellar Expert links per network (`/pact?id=…` redirects here, so lookup works without JavaScript) |
+| **Anyone** | `/verify` | Paste a certificate and check its proof offline, then check the anchored root on-chain |
+| **Sellers** | `/merchant` | Revenue, refund and dispute rates, cost per route |
+| **Agent owners** | `/principal` | Budgets and live pacts for each agent they run |
+| **Operators** | `/api/ops/health` | Sponsor balance, indexer lag, pending certificates, verifier error rate |
+
+Run the live check yourself (it sends real `anchor_batch` transactions):
+
+```bash
+DATABASE_URL=… ANCHORER_SECRET=S… STELLAR_NETWORK=testnet STELLAR_RPC_URL=https://soroban-testnet.stellar.org \
+PACT_CONTRACT_ID=CDUXJJUNYFILEYHE3LITANJEKCDFERNAABOSG75OWATFVM776BCMFEV6 \
+RECEIPT_ANCHOR_ID=CAEO5GBC3ULRC5RYBSCSOXLNXHU2HZAHNW5HY5LZM3DIPFMX357ILNJ2 INDEX_START_LEDGER=… \
+pnpm --filter web live:testnet
+```
+
+### What works today
 
 | Piece | Status | Notes |
 |---|---|---|
@@ -139,16 +155,70 @@ flowchart LR
 | Pollar Studio storefront template | ✅ Template | `templates/pollar-studio`, built with the public Pollar SDK only |
 | Hosted deployment | ✅ Testnet | [pactwright-studio-testnet.onrender.com](https://pactwright-studio-testnet.onrender.com) on Render. The [`studio-cron`](.github/workflows/studio-cron.yml) workflow syncs every 5 minutes and anchors hourly |
 
-Run the live check yourself (it sends real `anchor_batch` transactions):
+## ⚙️ Supported Versions & Compatibility
+
+Studio is a Next.js app plus an indexer, so the thing that actually constrains a deployment is the Node and pnpm pair the workspace pins, and the Stellar network the anchorer signs for. Both are read from the manifests, not from memory:
+
+| Item | Pin | Read from |
+|---|---|---|
+| Node.js | `>=24` (CI uses `.nvmrc`) | root `package.json` `engines`, `ci.yml` |
+| pnpm | `10.34.7` | root `package.json` `packageManager` |
+| Next.js | `^16.0.0` | `apps/web/package.json` |
+| React | `^19.2.0` | `apps/web/package.json` |
+| `@stellar/stellar-sdk` | `^16.4.1` | `apps/web/package.json` |
+| `pg` | `^8.16.0` | `apps/web/package.json` |
+| TypeScript | `^5.9.0` | `apps/web/package.json` |
+| Vitest / Playwright | `^4.0.0` / `^1.56.0` | `apps/web/package.json` |
+
+### What "Supported" means here
+
+`Supported` means the gate runs on every push and pull request to `main`: [`ci.yml`](.github/workflows/ci.yml) installs with `--frozen-lockfile`, then `pnpm typecheck` and `pnpm test`; [`e2e.yml`](.github/workflows/e2e.yml) applies the migrations, seeds data, builds the app and runs the Playwright specs; [`migrations.yml`](.github/workflows/migrations.yml) checks the schema files; [`roadmap-check.yml`](.github/workflows/roadmap-check.yml) fails a pull request that does not touch `ROADMAP.md`.
+
+The network side is verified by hand, not continuously: the anchoring figures below were produced against Stellar testnet on 2026-10-29 with deployed contract addresses ([`DEPLOYMENTS.md`](https://github.com/Pactwright/Pactwright-contracts/blob/main/DEPLOYMENTS.md)). A row marked `Untested` has neither CI coverage nor a manual run, and `Not implemented` means the code refuses rather than guesses.
+
+### Compatibility matrix
+
+| Target | Status | Notes |
+|---|---|---|
+| **Node 24, pnpm 10.34.7** | **Supported** | The exact pair CI installs and tests with |
+| **Older Node / pnpm** | **Untested** | `engines` requires Node ≥24; the lockfile is pnpm 10 |
+| **Stellar testnet** | **Supported** | Live: indexing, anchoring, certificate verification |
+| **Stellar pubnet** | **Not implemented** | Startup refuses the plaintext anchorer key on pubnet; `ANCHORER_SECRET_REF` (KMS) is not supported yet |
+
+## 🚀 Quick Start
+
+### 1. Installation
+
+Requires Node.js 24, pnpm 10 and a PostgreSQL database.
 
 ```bash
-DATABASE_URL=… ANCHORER_SECRET=S… STELLAR_NETWORK=testnet STELLAR_RPC_URL=https://soroban-testnet.stellar.org \
-PACT_CONTRACT_ID=CDUXJJUNYFILEYHE3LITANJEKCDFERNAABOSG75OWATFVM776BCMFEV6 \
-RECEIPT_ANCHOR_ID=CAEO5GBC3ULRC5RYBSCSOXLNXHU2HZAHNW5HY5LZM3DIPFMX357ILNJ2 INDEX_START_LEDGER=… \
-pnpm --filter web live:testnet
+git clone https://github.com/Pactwright/Pactwright-studio.git && cd Pactwright-studio
+pnpm install
+cp .env.example .env          # set DATABASE_URL, e.g. postgres://localhost:5432/pactwright
+pnpm db:migrate               # creates the schema
+pnpm db:seed                  # loads fixture pacts, receipts and accounts
 ```
 
-## Pages and API
+### 2. Configuration
+
+| Variable | Purpose |
+|---|---|
+| `DATABASE_URL` | Managed Postgres connection string |
+| `STELLAR_NETWORK`, `STELLAR_NETWORK_PASSPHRASE`, `STELLAR_RPC_URL` | Network. Startup fails if these are incomplete or inconsistent |
+| `HISTORY_RPC_URL` / `HISTORY_SOURCE_URL` | Backfill when the cursor falls outside RPC retention: an archival Stellar RPC, or an HTTP service returning base64-XDR events and `scannedThroughLedger` |
+| `PACT_CONTRACT_ID`, `RECEIPT_ANCHOR_ID`, `FACILITATOR_URL` | What to index and where to anchor ([addresses](https://github.com/Pactwright/Pactwright-contracts/blob/main/DEPLOYMENTS.md)) |
+| `INDEX_START_LEDGER`, `REFUND_VAULT_IDS` | First ledger to index; RefundVaults whose refunds are indexed |
+| `ANCHORER_SECRET` | `ReceiptAnchor` admin key, testnet only (refused on pubnet) |
+| `ANCHORER_SECRET_REF` | KMS reference to the anchorer key for pubnet (not supported yet) |
+| `CRON_SECRET` | Protects `/api/sync` and `/api/anchor` |
+
+### 3. Usage
+
+```bash
+pnpm dev                      # http://localhost:3000
+```
+
+The routes the app serves:
 
 | Route | Kind | Purpose |
 |---|---|---|
@@ -163,59 +233,7 @@ pnpm --filter web live:testnet
 | `GET /api/anchor` | Cron | One anchoring cycle (requires `CRON_SECRET`) |
 | `GET /api/ops/health` | Ops | Health and monitoring signals |
 
-## Run it locally
-
-Requires Node.js 24, pnpm 10 and a PostgreSQL database.
-
-```bash
-git clone https://github.com/Pactwright/Pactwright-studio.git && cd Pactwright-studio
-pnpm install
-cp .env.example .env          # set DATABASE_URL, e.g. postgres://localhost:5432/pactwright
-pnpm db:migrate               # creates the schema
-pnpm db:seed                  # loads fixture pacts, receipts and accounts
-pnpm dev                      # http://localhost:3000
-```
-
-```bash
-pnpm typecheck
-pnpm test                     # 62 unit tests
-pnpm --filter web e2e         # 3 Playwright end-to-end tests
-```
-
-## Deploy
-
-Testnet is live at [pactwright-studio-testnet.onrender.com](https://pactwright-studio-testnet.onrender.com), hosted on Render from
-[`render.yaml`](render.yaml): the web app and a managed Postgres. Migrations run before every deploy.
-Render's free tier has no cron jobs, so the [`studio-cron`](.github/workflows/studio-cron.yml)
-GitHub Actions workflow calls `/api/sync` every 5 minutes and `/api/anchor` every hour. It needs the
-repository secrets `STUDIO_URL` and `CRON_SECRET` (the same value as on Render), and fails loudly
-without them.
-
-1. Render Dashboard → **New → Blueprint** → this repo.
-2. Fill in the `sync: false` values when asked. They stay in Render's secret store:
-   `ANCHORER_SECRET` (the `ReceiptAnchor` admin key, testnet only), `INDEX_START_LEDGER`,
-   `REFUND_VAULT_IDS` and `FACILITATOR_URL`, and `CRON_SECRET` (also set as a repository secret for
-   the `studio-cron` workflow).
-3. Check `/api/ops/health`: indexer lag must stay under 50% of RPC retention.
-
-[`vercel.json`](vercel.json) keeps the same two schedules for a Vercel deployment.
-
-| Variable | Purpose |
-|---|---|
-| `DATABASE_URL` | Managed Postgres connection string |
-| `STELLAR_NETWORK`, `STELLAR_NETWORK_PASSPHRASE`, `STELLAR_RPC_URL` | Network. Startup fails if these are incomplete or inconsistent |
-| `HISTORY_RPC_URL` / `HISTORY_SOURCE_URL` | Backfill when the cursor falls outside RPC retention: an archival Stellar RPC, or an HTTP service returning base64-XDR events and `scannedThroughLedger` |
-| `PACT_CONTRACT_ID`, `RECEIPT_ANCHOR_ID`, `FACILITATOR_URL` | What to index and where to anchor ([addresses](https://github.com/Pactwright/Pactwright-contracts/blob/main/DEPLOYMENTS.md)) |
-| `INDEX_START_LEDGER`, `REFUND_VAULT_IDS` | First ledger to index; RefundVaults whose refunds are indexed |
-| `ANCHORER_SECRET` | `ReceiptAnchor` admin key, testnet only (refused on pubnet) |
-| `ANCHORER_SECRET_REF` | KMS reference to the anchorer key for pubnet (not supported yet) |
-| `CRON_SECRET` | Protects `/api/sync` and `/api/anchor` |
-
-```bash
-DATABASE_URL="<hosted-postgres-url>" pnpm db:migrate
-```
-
-## Data model
+The data behind those pages:
 
 | Table | Holds |
 |---|---|
@@ -227,29 +245,40 @@ DATABASE_URL="<hosted-postgres-url>" pnpm db:migrate
 | `sync_state` | The indexer's cursor per source |
 | `sellers`, `routes`, `agents`, `budgets` | Accounts for the dashboards (v1) |
 
-## Layout
+Tests:
 
-| Path | What |
-|---|---|
-| [`apps/web/app`](apps/web/app) | Next.js pages and API routes |
-| [`apps/web/lib/indexer`](apps/web/lib/indexer) | Event sources, decoding, cursor, backfill |
-| [`apps/web/lib/anchorer`](apps/web/lib/anchorer) | Reconcile → batch → anchor → proofs (core-team path) |
-| [`apps/web/lib/verify.ts`](apps/web/lib/verify.ts) | Receipt leaves and offline proof verification |
-| [`apps/web/lib/ops`](apps/web/lib/ops) | Monitoring signals |
-| [`apps/web/components`](apps/web/components) | Timeline, certificate card, transaction links |
-| [`apps/web/test`](apps/web/test) | Unit tests and Playwright specs |
-| [`migrations`](migrations) | Schema, migration runner and seed data |
-| [`templates/pollar-studio`](templates/pollar-studio) | Storefront template for Pollar Studio sellers |
-| [`docs`](docs) | PRD, architecture, essentials, project structure |
+```bash
+pnpm typecheck
+pnpm test                     # 62 unit tests
+pnpm --filter web e2e         # 3 Playwright end-to-end tests
+```
 
-## Testnet pacts
+### Deploy
 
-Every MVP scenario ran as real testnet transactions on 2026-10-29
-([Pactwright-Kit testnet e2e](https://github.com/Pactwright/Pactwright-Kit/tree/main/e2e/testnet)).
-The escrow (M2) pacts are on the `pact` contract, so Studio indexes them; exact-refund (M0) purchases
-are direct payments, not on-chain pacts, so they don't appear yet. One pact to open: the one the
-hosted verifier judged with its real model,
-[`40725564…5c55`](https://pactwright-studio-testnet.onrender.com/pact/4072556402d709463f7cb888a4a9e03b061d906f0b7ca5c49ebb2eec4e7d5c55).
+Testnet is live at [pactwright-studio-testnet.onrender.com](https://pactwright-studio-testnet.onrender.com), hosted on Render from [`render.yaml`](render.yaml): the web app and a managed Postgres. Migrations run before every deploy. Render's free tier has no cron jobs, so the [`studio-cron`](.github/workflows/studio-cron.yml) GitHub Actions workflow calls `/api/sync` every 5 minutes and `/api/anchor` every hour. It needs the repository secrets `STUDIO_URL` and `CRON_SECRET` (the same value as on Render), and fails loudly without them.
+
+1. Render Dashboard → **New → Blueprint** → this repo.
+2. Fill in the `sync: false` values when asked. They stay in Render's secret store: `ANCHORER_SECRET` (the `ReceiptAnchor` admin key, testnet only), `INDEX_START_LEDGER`, `REFUND_VAULT_IDS` and `FACILITATOR_URL`, and `CRON_SECRET` (also set as a repository secret for the `studio-cron` workflow).
+3. Check `/api/ops/health`: indexer lag must stay under 50% of RPC retention.
+
+[`vercel.json`](vercel.json) keeps the same two schedules for a Vercel deployment.
+
+```bash
+DATABASE_URL="<hosted-postgres-url>" pnpm db:migrate
+```
+
+## 📊 Measurements
+
+Every figure in this README is recorded somewhere you can open, not remembered:
+
+- **Anchoring**: batch 1's transaction is linked above; `verify_receipt` on the deployed `ReceiptAnchor` confirms each leaf in it.
+- **Tests**: 62 unit tests across 12 suites, measured 2026-10-30 with `pnpm test`; the 3 Playwright end-to-end specs run in [`e2e.yml`](.github/workflows/e2e.yml), not locally.
+- **Testnet purchase**: the pact the hosted verifier judged with its real model is [`40725564…5c55`](https://pactwright-studio-testnet.onrender.com/pact/4072556402d709463f7cb888a4a9e03b061d906f0b7ca5c49ebb2eec4e7d5c55).
+- **Network figures** for the pacts below come from the [Pactwright-Kit testnet e2e](https://github.com/Pactwright/Pactwright-Kit/tree/main/e2e/testnet) report, not from Studio.
+
+## 📊 Testnet pacts
+
+Every MVP scenario ran as real testnet transactions on 2026-10-29 ([Pactwright-Kit testnet e2e](https://github.com/Pactwright/Pactwright-Kit/tree/main/e2e/testnet)). The escrow (M2) pacts are on the `pact` contract, so Studio indexes them; exact-refund (M0) purchases are direct payments, not on-chain pacts, so they don't appear yet.
 
 | Scenario | Outcome | Transactions |
 |---|---|---|
@@ -261,33 +290,9 @@ hosted verifier judged with its real model,
 | M2 silence | no verdict, refunded by silence policy | [`76df8318…`](https://stellar.expert/explorer/testnet/tx/76df83188eb7cf22c0b6c639fc0a090615ca3040ecfb6a3e43d6347cece27d59) · [`e62aff4d…`](https://stellar.expert/explorer/testnet/tx/e62aff4d291eff2b76ba282aae987d82c6ca91e1681e7944d96abb1f3739f833) |
 | Dispute refund | dispute-1: 2 of 4 pages, 0.5 refunded | [`a191a000…`](https://stellar.expert/explorer/testnet/tx/a191a000f7920f2fff9839bbccceeeca35c82fce29a5e46510fd3db1bcdf2ff0) |
 
-## Project status
+What is next, from [`ROADMAP.md`](ROADMAP.md): real data for the seller and agent-budget pages (registration and sign-in), indexing exact-refund purchases, and holding the anchorer key in a KMS before any mainnet deployment.
 
-Studio is live on testnet, indexing and anchoring on a schedule. Next:
-
-1. Real data for the seller and agent-budget pages: registration and sign-in.
-2. Index exact-refund (M0) purchases, which aren't pacts on-chain.
-3. Hold the anchorer key in a KMS (`ANCHORER_SECRET_REF`) before any mainnet deployment.
-
-[ROADMAP.md](ROADMAP.md) tracks every task. Every pull request updates it.
-
-## FAQ
-
-**Do I have to trust Studio?** No. A certificate is a receipt plus a Merkle proof. You can recompute
-the root yourself and compare it with the root anchored on Stellar, or call `verify_receipt` on the
-`ReceiptAnchor` contract directly. Studio only saves you the work.
-
-**Why batch receipts instead of anchoring each one?** Cost. One anchoring transaction covers a whole
-batch, and every receipt in it can still be proven individually.
-
-**What if Studio goes down?** The money is never in Studio: the contract holds and moves it. Pacts
-keep working, and already-issued certificates stay verifiable against the anchored roots.
-
-**Is pact data private?** No. Pact timelines are public by design, because the chain they come from
-is public. The merchant and principal dashboards don't have sign-in yet, so don't put private data in
-them before that lands.
-
-## Built on
+### Built on
 
 | Project | What Studio uses | How |
 |---|---|---|
@@ -296,12 +301,25 @@ them before that lands.
 | [Pollar](https://docs.pollar.xyz) | Seller storefronts | `templates/pollar-studio`, built with the public SDK only |
 | [Witness](https://github.com/fabian416/witness) | Verdict envelopes | Stored with each pact (`verdicts` table) |
 
-## Contributing
+## 🤝 Community & Maintainers
 
-Read [CONTRIBUTING.md](CONTRIBUTING.md) and [AGENTS.md](AGENTS.md). Every pull request updates
-[ROADMAP.md](ROADMAP.md): task status, progress counts and one Update log line. `main` is protected,
-so pull requests need a review and green checks. The anchorer and the migrations are core-team paths
-(see `CODEOWNERS`).
+<!-- socials: add Discord / Telegram / X links here when they exist. -->
+
+- Documentation hub: [pactwright.github.io/docs](https://pactwright.github.io/docs/)
+- The other repositories: [Contracts](https://github.com/Pactwright/Pactwright-contracts) · [Kit](https://github.com/Pactwright/Pactwright-Kit)
+- Security reports: see [`SECURITY.md`](SECURITY.md) — privately, never a public issue.
+
+| Maintainer | Role |
+|---|---|
+| Pactwright core team | Indexer, anchorer, web app and schema |
+
+## 🛠️ Contributing
+
+Read [CONTRIBUTING.md](CONTRIBUTING.md) and [AGENTS.md](AGENTS.md). Every pull request updates [ROADMAP.md](ROADMAP.md): task status, progress counts and one Update log line — a pull request that does not touch it fails `roadmap-check`. `main` is protected, so pull requests need a review and green checks. The anchorer and the migrations are core-team paths (see `CODEOWNERS`).
+
+### 🧑‍💻 Contributors
+
+<img src="https://contrib.rocks/image?repo=Pactwright/Pactwright-studio" alt="Contributors to Pactwright-studio">
 
 ## License
 
@@ -320,21 +338,19 @@ Copyright (c) 2026 Pactwright contributors
 | Distribute, sublicense and sell copies | | |
 | Run your own Studio for your own pacts | | |
 
-Running your own Studio doesn't make its certificates any less verifiable. Proofs check against
-the on-chain root, not against whoever hosts the page.
+Running your own Studio doesn't make its certificates any less verifiable. Proofs check against the on-chain root, not against whoever hosts the page.
 
 ### Third-party code and licenses
 
 | Component | How it is used | License |
 |---|---|---|
-| [Next.js](https://www.npmjs.com/package/next) 16 | The web app | MIT |
-| [React](https://www.npmjs.com/package/react) 19 | UI | MIT |
+| [Next.js](https://www.npmjs.com/package/next) | The web app | MIT |
+| [React](https://www.npmjs.com/package/react) | UI | MIT |
 | [node-postgres (`pg`)](https://www.npmjs.com/package/pg) | Database access | MIT |
 | Vitest, Playwright, TypeScript | Development and tests only, not shipped | MIT / Apache-2.0 |
 | Accensa `ReceiptAnchor` format | Merkle tree format; Studio anchors to the deployed contract but includes none of its code | MIT |
 
-Pollar Studio has no license file, so none of its code is used. The storefront template uses only
-the public Pollar SDK. Every project Pactwright builds on is credited in [NOTICE](NOTICE).
+Pollar Studio has no license file, so none of its code is used. The storefront template uses only the public Pollar SDK. Every project Pactwright builds on is credited in [NOTICE](NOTICE).
 
 ### The other Pactwright repositories
 
@@ -346,5 +362,4 @@ the public Pollar SDK. Every project Pactwright builds on is credited in [NOTICE
 
 ### Contributing under this license
 
-By opening a pull request, you agree that your contribution is licensed under the same MIT license as
-the rest of the repository. There is no separate contributor license agreement.
+By opening a pull request, you agree that your contribution is licensed under the same MIT license as the rest of the repository. There is no separate contributor license agreement.
