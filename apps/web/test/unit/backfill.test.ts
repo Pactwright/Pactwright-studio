@@ -302,6 +302,8 @@ describe("Indexer backfill & lag alert (ROADMAP S-03)", () => {
         events: rpcEvents,
         latestLedger: 51000,
         oldestLedger: 50000,
+        // The mock read every page, so this pass covers the whole window.
+        throughLedger: 51000,
       });
 
       // 5. Run syncWithHistory: backfills the historical gap, then resumes RPC sync

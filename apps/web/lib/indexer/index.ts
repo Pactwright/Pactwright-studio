@@ -168,8 +168,9 @@ export async function sync(config: ChainConfig = chainConfig()): Promise<SyncRes
     if (fromLedger < health.oldestLedger) throw new OutsideRetentionError(source.name, fromLedger, health.oldestLedger);
     const page = await fetchEvents(source, fromLedger, config);
     const persisted = await persistEvents(page.events);
-    await advance(source.name, page.latestLedger);
-    results.push({ source: source.name, fromLedger, toLedger: page.latestLedger, ...persisted });
+    // The cursor moves to what this pass actually read, never to the tip it has not read yet.
+    await advance(source.name, page.throughLedger);
+    results.push({ source: source.name, fromLedger, toLedger: page.throughLedger, ...persisted });
   }
   return results;
 }
