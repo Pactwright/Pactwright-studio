@@ -6,7 +6,7 @@
 
 | | |
 |---|---|
-| Last updated | 2026-10-30 |
+| Last updated | 2026-10-31 |
 | Progress | **16 / 21 tasks (76%)** |
 
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (ADR) · owner `core`/`wave` · size `T`/`M`/`H`.
@@ -67,6 +67,7 @@ Dashboards.
 
 | Date | PR / change | Tasks | Summary |
 |---|---|---|---|
+| 2026-10-31 | docs/tollcraft-shape | — (README) | Matched the reference README exactly: dropped the `## Contents` block (the Tollcraft README has none), and replaced the socials placeholder with the real community links, Discord (`discord.gg/4WFU6fwPe`) and Telegram (`t.me/Pactwright`). No other content changed. |
 | 2026-10-30 | docs/readme-template | — (README) | `README.md` restructured to the `Tollcraft/soroban-budget-assert` section architecture (Overview · Architecture · Receipts · Anchoring and dashboards · Supported Versions & Compatibility · Quick Start · Measurements · Testnet pacts · Community & Maintainers · Contributing · License), with every verified claim, table, mermaid diagram, command block and transaction link re-homed rather than rewritten, and the four FAQ answers folded into a "Trust and privacy" section. Figures refreshed against today's measurements: **62 unit tests across 12 suites**, the 3 Playwright specs marked CI-only (`e2e.yml`), OpenSSF Scorecard badge kept while the stale "48 unit tests" and "not deployed yet" badges were dropped, and the live `pactwright-studio-testnet.onrender.com` deployment plus backfill status recorded. Anchoring evidence unchanged: batch 1, 9 receipts, `be51068e…`. Every relative link checked against the tree. No code or behavior change, so no task status moved. |
 | 2026-10-30 | README | — | README: live on testnet (was 'not deployed'); 62 unit and 3 e2e tests (was 48); backfill works; scheduling by the studio-cron workflow, not Render crons; the home page; testnet pacts now visible in Studio; current next steps; a short section on the interface; links to Studio and the docs. |
 | 2026-10-30 | deps | — | GitHub Actions: actions/checkout v7, actions/setup-node v7, pnpm/action-setup v6, in one change (replaces Dependabot #1, #2 and #3, which edit adjacent lines and would conflict with each other). |
