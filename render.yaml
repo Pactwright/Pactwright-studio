@@ -49,6 +49,9 @@ projects:
                 sync: false
               - key: FACILITATOR_URL
                 sync: false
+              # The testnet verifier service; /api/ops/health reads its verdict counters (XC-03).
+              - key: VERIFIER_URL
+                value: https://pactwright-verifier-testnet.onrender.com
               # ReceiptAnchor admin key (testnet only; refused on pubnet).
               - key: ANCHORER_SECRET
                 sync: false
