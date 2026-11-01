@@ -20,9 +20,18 @@
   <a href="https://pactwright-studio-testnet.onrender.com"><strong>Open Studio</strong></a> ·
   <a href="https://pactwright.github.io/docs/"><strong>Documentation</strong></a> ·
   <a href="#-quick-start"><strong>Quick start</strong></a> ·
-  <a href="#-anchoring-and-dashboards"><strong>Anchoring</strong></a>
-  <!-- demo: add a Docs · Dashboard · Demo link row here when a screencast exists -->
+  <a href="#-anchoring-and-dashboards"><strong>Anchoring</strong></a> ·
+  <a href="https://github.com/Pactwright/Pactwright-studio/releases/download/v0.1.0-rc.1/brag.mp4"><strong>Watch Film (1080p)</strong></a>
 </p>
+
+<p align="center">
+  <a href="https://github.com/Pactwright/Pactwright-studio/releases/download/v0.1.0-rc.1/brag.mp4">
+    <img src="https://github.com/Pactwright/Pactwright-studio/releases/download/v0.1.0-rc.1/film-preview.webp" width="100%" alt="Pactwright Launch Film: one agent, four purchases, four endings, each enforced on Stellar testnet">
+  </a>
+</p>
+
+> 🔊 **Turn sound on.** [Download or watch the full film (1080p, 60 fps, with music & sound)](https://github.com/Pactwright/Pactwright-studio/releases/download/v0.1.0-rc.1/brag.mp4)  
+> *One agent, four purchases, four different endings on Stellar testnet: paid pro rata for 3 of 4 pages, refunded for a tortilla recipe, refunded when nobody answered, and half refunded after a dispute.*
 
 > [!IMPORTANT]
 > **Live on testnet: [pactwright-studio-testnet.onrender.com](https://pactwright-studio-testnet.onrender.com).** It indexes the

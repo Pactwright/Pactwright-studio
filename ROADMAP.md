@@ -69,6 +69,7 @@ Dashboards.
 
 | Date | PR / change | Tasks | Summary |
 |---|---|---|---|
+| 2026-11-01 | #71 | — | Embedded the Pactwright product launch film and animated preview on the repository README, linked to the 1080p release asset. |
 | 2026-11-01 | scorecard-hardening | F-07 | Hardened OpenSSF Scorecard rating: pinned all GitHub Actions dependencies to full 40-character commit SHAs across all workflows, enforced least-privilege top-level permissions, added CodeQL SAST workflow, and updated scorecard configuration. |
 | 2026-11-01 | synthetic-keepalive | S-10, XC-03 | Implemented automated synthetic keepalive monitoring (`scripts/synthetic-keepalive.mjs`, `.github/workflows/synthetic-keepalive.yml`) probing Studio liveness, Facilitator healthz, and Verifier health every 10 minutes to prevent Render free-tier container sleep; audited all 25 open issues ensuring explicit complexity:* and area:* labels across all three repositories; verified mandatory PR Malware Guard status check in branch protection. |
 | 2026-11-01 | #68 | S-10, XC-03 | Closed issues #45, #46, #47, #48 under @abrcrmb: implemented external alert webhook delivery with bounded timeout and retries (#45); made all four probe thresholds configurable via environment variables, bounded indexer lag in wall-clock time, and added configSource reporting (#46); created migration 004_ops_probe_runs and implemented probe history, unhealthySince, alertCount, and alert deduplication (#47); pointed Render healthCheckPath to dedicated /api/ops/liveness probe (#48). |
