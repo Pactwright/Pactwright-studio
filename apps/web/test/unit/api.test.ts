@@ -10,6 +10,11 @@ vi.mock("@/lib/db", () => {
 import { db } from "@/lib/db";
 import { getPactById } from "../../lib/pacts";
 import { getCertificateById } from "../../lib/certificates";
+import { GET as getPactRoute } from "../../app/api/pacts/[id]/route";
+import { GET as getCertRoute } from "../../app/api/certificates/[id]/route";
+import { GET as getSyncRoute } from "../../app/api/sync/route";
+import { GET as getAnchorRoute } from "../../app/api/anchor/route";
+import { verifyReceipt, sha256 } from "../../lib/verify";
 
 describe("API data models & queries", () => {
   const mockQuery = vi.fn();
@@ -151,6 +156,103 @@ describe("API data models & queries", () => {
       expect(cert?.root).toBeUndefined();
       expect(cert?.proof).toBeUndefined();
       expect(cert?.batchId).toBeUndefined();
+    });
+  });
+
+  describe("HTTP Route Handlers & Auth (ROADMAP S-05, S-09, #58)", () => {
+    const validHexId = "1111111111111111111111111111111111111111111111111111111111111111";
+
+    describe("/api/pacts/[id]", () => {
+      it("returns 400 when ID is not valid 64-character hex", async () => {
+        const req = new Request("http://localhost/api/pacts/short-id");
+        const res = await getPactRoute(req, { params: Promise.resolve({ id: "short-id" }) });
+        expect(res.status).toBe(400);
+        const body = await res.json();
+        expect(body.error).toContain("Invalid pact ID format");
+      });
+
+      it("returns 404 when pact is not found", async () => {
+        mockQuery.mockResolvedValueOnce({ rows: [] });
+        const req = new Request(`http://localhost/api/pacts/${validHexId}`);
+        const res = await getPactRoute(req, { params: Promise.resolve({ id: validHexId }) });
+        expect(res.status).toBe(404);
+      });
+
+      it("returns 500 when database throws", async () => {
+        mockQuery.mockRejectedValueOnce(new Error("Database disconnected"));
+        const req = new Request(`http://localhost/api/pacts/${validHexId}`);
+        const res = await getPactRoute(req, { params: Promise.resolve({ id: validHexId }) });
+        expect(res.status).toBe(500);
+      });
+    });
+
+    describe("/api/certificates/[id]", () => {
+      it("returns 400 when ID is not valid 64-character hex", async () => {
+        const req = new Request("http://localhost/api/certificates/bad-id");
+        const res = await getCertRoute(req, { params: Promise.resolve({ id: "bad-id" }) });
+        expect(res.status).toBe(400);
+      });
+
+      it("returns 404 when certificate is not found", async () => {
+        mockQuery.mockResolvedValueOnce({ rows: [] });
+        const req = new Request(`http://localhost/api/certificates/${validHexId}`);
+        const res = await getCertRoute(req, { params: Promise.resolve({ id: validHexId }) });
+        expect(res.status).toBe(404);
+      });
+    });
+
+    describe("cron route auth (/api/sync & /api/anchor)", () => {
+      beforeEach(() => {
+        delete process.env.CRON_SECRET;
+      });
+
+      it("returns 503 when CRON_SECRET is not configured", async () => {
+        const req = new Request("http://localhost/api/sync");
+        const res = await getSyncRoute(req);
+        expect(res.status).toBe(503);
+
+        const reqAnchor = new Request("http://localhost/api/anchor");
+        const resAnchor = await getAnchorRoute(reqAnchor);
+        expect(resAnchor.status).toBe(503);
+      });
+
+      it("returns 401 when request lacks valid secret header or bearer token", async () => {
+        process.env.CRON_SECRET = "super-secret-cron-key";
+        const req = new Request("http://localhost/api/sync", {
+          headers: { Authorization: "Bearer wrong-key" },
+        });
+        const res = await getSyncRoute(req);
+        expect(res.status).toBe(401);
+
+        const reqAnchor = new Request("http://localhost/api/anchor", {
+          headers: { "x-cron-secret": "wrong-key" },
+        });
+        const resAnchor = await getAnchorRoute(reqAnchor);
+        expect(resAnchor.status).toBe(401);
+      });
+    });
+  });
+
+  describe("Multi-Leaf Merkle Certificate Verification (ROADMAP S-07, #58)", () => {
+    it("verifies a multi-leaf batch where leaf != root using sorted pairs", () => {
+      const leaf0 = "11".repeat(32);
+      const leaf1 = "22".repeat(32);
+
+      const buf0 = Buffer.from(leaf0, "hex");
+      const buf1 = Buffer.from(leaf1, "hex");
+
+      const pair = Buffer.compare(buf0, buf1) <= 0
+        ? Buffer.concat([buf0, buf1])
+        : Buffer.concat([buf1, buf0]);
+      const root = sha256(pair).toString("hex");
+
+      // Verify that leaf != root and proof has length 1
+      expect(leaf0).not.toBe(root);
+      expect(verifyReceipt(leaf0, [leaf1], root)).toBe(true);
+      expect(verifyReceipt(leaf1, [leaf0], root)).toBe(true);
+
+      // Verify tampered sibling fails
+      expect(verifyReceipt(leaf0, ["33".repeat(32)], root)).toBe(false);
     });
   });
 });

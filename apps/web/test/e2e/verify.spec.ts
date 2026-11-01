@@ -8,7 +8,7 @@ test.describe("Certificate Viewer (ROADMAP S-09)", () => {
     const textarea = page.locator("textarea");
     const inspectButton = page.locator('button:has-text("Inspect & Verify")');
 
-    // 1. Inspect a valid certificate
+    // 1. Inspect a valid certificate with multi-leaf Merkle proof (leaf != root, ROADMAP S-09, #58)
     const validCert = JSON.stringify({
       pactId: "1111111111111111111111111111111111111111111111111111111111111111",
       transition: "settled",
@@ -16,8 +16,8 @@ test.describe("Certificate Viewer (ROADMAP S-09)", () => {
       toBuyer: "0.0000000",
       status: "anchored",
       leaf: "1111111111111111111111111111111111111111111111111111111111111111",
-      root: "1111111111111111111111111111111111111111111111111111111111111111",
-      proof: [],
+      root: "5189c77d29fe5d546a045ec46986852785fea5c13ac7da9c115ff5fb6edf817c",
+      proof: ["2222222222222222222222222222222222222222222222222222222222222222"],
     });
 
     await textarea.fill(validCert);

@@ -10,12 +10,8 @@ export default async function PrincipalViewPage({
   searchParams?: Promise<{ principal?: string }>;
 }) {
   const params = await searchParams;
-  let data = null;
-  try {
-    data = await getPrincipalDashboardData(params?.principal);
-  } catch {
-    // Database unavailable or empty
-  }
+  // Let database errors bubble to error boundary so 500 is served instead of claiming 0 principals
+  const data = await getPrincipalDashboardData(params?.principal);
 
   if (!data) {
     return (

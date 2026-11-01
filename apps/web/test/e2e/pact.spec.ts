@@ -19,4 +19,20 @@ test.describe("Pact Page (ROADMAP S-09)", () => {
     await expect(page.locator("text=Merchant Dashboard")).toBeVisible();
     await expect(page.locator("text=Principal View")).toBeVisible();
   });
+
+  test("form round-trip: searches pact by 64-hex id from home page (#58)", async ({ page }) => {
+    await page.goto("/");
+    const input = page.locator('input[name="id"]');
+    await input.fill(seededPactId);
+    await page.locator('button[type="submit"]').click();
+    await expect(page).toHaveURL(`/pact/${seededPactId}`);
+  });
+
+  test("visits merchant dashboard and principal view (#58)", async ({ page }) => {
+    await page.goto("/merchant");
+    await expect(page.locator("h1")).toContainText("Merchant");
+
+    await page.goto("/principal");
+    await expect(page.locator("h1")).toContainText("Principal");
+  });
 });
