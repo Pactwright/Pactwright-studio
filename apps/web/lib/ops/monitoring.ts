@@ -22,6 +22,8 @@ export interface UnmeasuredSignal {
   reason: string;
 }
 
+import { getAnchorVerificationRecord } from "@/lib/anchorer";
+
 export interface ProbeResult {
   name: string;
   ok: boolean;
@@ -69,17 +71,40 @@ export function probeIndexerLag(
 
 export function probePendingCertificates(
   pendingCount: number,
-  maxPending = 500
+  maxPending?: number
 ): ProbeResult {
-  const ok = pendingCount <= maxPending;
+  const drainCapacity = process.env.ANCHOR_MAX_BATCH_SIZE
+    ? parseInt(process.env.ANCHOR_MAX_BATCH_SIZE, 10) * 2
+    : 500;
+  const threshold =
+    maxPending ??
+    (process.env.PROBE_MAX_PENDING_CERTIFICATES
+      ? parseInt(process.env.PROBE_MAX_PENDING_CERTIFICATES, 10)
+      : Math.max(500, drainCapacity));
+  const ok = pendingCount <= threshold;
   return {
     name: "pending_certificates",
     ok,
     value: pendingCount,
-    threshold: maxPending,
+    threshold,
     alert: ok
       ? undefined
-      : `WARNING: Backlog of pending unanchored certificates (${pendingCount} > threshold ${maxPending}).`,
+      : `WARNING: Backlog of pending unanchored certificates (${pendingCount} > threshold ${threshold}).`,
+  };
+}
+
+export function probeAnchorVerification(
+  failure = getAnchorVerificationRecord().lastFailure
+): ProbeResult {
+  const ok = !failure;
+  return {
+    name: "anchor_verification",
+    ok,
+    value: failure ? 0 : 1,
+    threshold: 1,
+    alert: ok
+      ? undefined
+      : `CRITICAL: Sampled post-anchor verification failed on-chain for batch ${failure?.batchId}: ${failure?.reason}`,
   };
 }
 
@@ -123,6 +148,10 @@ export function evaluateSystemHealth(metrics: SystemMetrics, unmeasured: Unmeasu
   }
   if (metrics.pendingCertificatesCount !== undefined) {
     probes.push(probePendingCertificates(metrics.pendingCertificatesCount));
+  }
+  const anchorFailure = getAnchorVerificationRecord().lastFailure;
+  if (anchorFailure) {
+    probes.push(probeAnchorVerification(anchorFailure));
   }
   if (metrics.verifierTotalRequests !== undefined && metrics.verifierErrorRequests !== undefined) {
     probes.push(probeVerifierErrorRate(metrics.verifierTotalRequests, metrics.verifierErrorRequests));

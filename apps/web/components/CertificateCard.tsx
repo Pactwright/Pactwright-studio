@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { verifyReceipt } from "@/lib/verify";
+import { useState, useEffect } from "react";
+import { verifyReceipt, computeReceiptLeaf } from "@/lib/verify";
 import { Seal } from "@/components/Seal";
 import { formatUsdc } from "@/lib/format";
+import { TxLink, ContractLink } from "@/components/TxLink";
+import type { Transition } from "@/lib/types";
 
 export interface CertificateData {
   pactId: string;
@@ -11,20 +13,36 @@ export interface CertificateData {
   toSeller: string;
   toBuyer: string;
   leaf: string;
+  leafInput?: {
+    transition: string;
+    toSellerStroops: string;
+    toBuyerStroops: string;
+    envelopeHash: string | null;
+    ledger: number | null;
+  };
   status: "pending" | "anchored";
   proof?: string[];
   root?: string;
   batchId?: number;
   receiptAnchor?: string;
+  anchorTx?: string;
+  anchoredLedger?: number;
+  onChainVerified?: boolean;
 }
 
-/** Paste a certificate; shows pending/anchored and checks the Merkle proof in the browser. ROADMAP S-07. */
+/** Paste a certificate or inspect loaded certificate; separates offline Merkle proof and on-chain verification. ROADMAP S-07, #55. */
 export function CertificateCard({ initialCertificate }: { initialCertificate?: CertificateData }) {
-  const [certJson, setCertJson] = useState("");
+  const [certJson, setCertJson] = useState(() => (initialCertificate ? JSON.stringify(initialCertificate, null, 2) : ""));
   const [certificate, setCertificate] = useState<CertificateData | null>(initialCertificate ?? null);
   const [error, setError] = useState<string | null>(null);
-  // Bumped on every inspection so the seal presses again for each certificate.
   const [inspections, setInspections] = useState(0);
+  const [onChainStatus, setOnChainStatus] = useState<"idle" | "checking" | "verified" | "failed">(() =>
+    initialCertificate?.onChainVerified !== undefined
+      ? initialCertificate.onChainVerified
+        ? "verified"
+        : "failed"
+      : "idle"
+  );
 
   const handleInspect = () => {
     setError(null);
@@ -48,7 +66,69 @@ export function CertificateCard({ initialCertificate }: { initialCertificate?: C
   };
 
   const anchored = certificate?.status === "anchored";
-  const isVerified = certificate?.root && certificate?.proof ? verifyReceipt(certificate.leaf, certificate.proof, certificate.root) : false;
+  const isOfflineVerified =
+    certificate?.root && certificate?.proof ? verifyReceipt(certificate.leaf, certificate.proof, certificate.root) : false;
+
+  // Recompute leaf if leafInput is present to flag tampering (ROADMAP S-07, #55)
+  let recomputedLeaf: string | null = null;
+  let leafMismatch = false;
+  if (certificate?.leafInput && certificate.leafInput.ledger != null) {
+    try {
+      recomputedLeaf = computeReceiptLeaf({
+        pactId: certificate.pactId,
+        transition: certificate.leafInput.transition as Transition,
+        toSeller: certificate.leafInput.toSellerStroops,
+        toBuyer: certificate.leafInput.toBuyerStroops,
+        envelopeHash: certificate.leafInput.envelopeHash,
+        ledger: certificate.leafInput.ledger,
+      });
+      if (recomputedLeaf.toLowerCase() !== certificate.leaf.trim().toLowerCase()) {
+        leafMismatch = true;
+      }
+    } catch {
+      leafMismatch = true;
+    }
+  }
+
+  // On-chain verification query when certificate is anchored
+  useEffect(() => {
+    if (!certificate || certificate.status !== "anchored" || certificate.batchId == null || !certificate.proof) {
+      setOnChainStatus("idle");
+      return;
+    }
+    if (certificate.onChainVerified !== undefined) {
+      setOnChainStatus(certificate.onChainVerified ? "verified" : "failed");
+      return;
+    }
+    let cancelled = false;
+    setOnChainStatus("checking");
+    fetch("/api/certificates/verify", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        batchId: certificate.batchId,
+        leaf: certificate.leaf,
+        proof: certificate.proof,
+        receiptAnchorId: certificate.receiptAnchor,
+      }),
+    })
+      .then((res) => (res.ok ? res.json() : { verified: false }))
+      .then((data: { verified?: boolean }) => {
+        if (!cancelled) {
+          setOnChainStatus(data.verified ? "verified" : "failed");
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setOnChainStatus("failed");
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [certificate]);
+
+  const isValidOverall = isOfflineVerified && !leafMismatch;
 
   return (
     <div>
@@ -75,6 +155,12 @@ export function CertificateCard({ initialCertificate }: { initialCertificate?: C
         </p>
       )}
 
+      {leafMismatch && (
+        <p className="error-note" role="alert" data-testid="leaf-mismatch-alert">
+          ⚠️ Leaf Mismatch: The recomputed leaf ({recomputedLeaf?.slice(0, 16)}…) does not match the certificate leaf ({certificate?.leaf.slice(0, 16)}…). This certificate has been altered.
+        </p>
+      )}
+
       {certificate && (
         <div className="certificate-result" aria-live="polite">
           <div>
@@ -85,16 +171,43 @@ export function CertificateCard({ initialCertificate }: { initialCertificate?: C
               <span
                 data-testid="verification-badge"
                 className="stamp stamp--small"
-                data-ink={anchored ? (isVerified ? "teal" : "red") : "indigo"}
+                data-ink={isValidOverall ? "teal" : "red"}
               >
-                {anchored ? (isVerified ? "✓ Verified (Offline Merkle Proof)" : "✗ Invalid Merkle Proof") : "Pending Anchor"}
+                {leafMismatch
+                  ? "✗ Leaf Mismatch"
+                  : isOfflineVerified
+                    ? "✓ Consistent with this root (Offline Merkle Proof)"
+                    : "✗ Invalid Merkle Proof"}
+              </span>
+              <span
+                data-testid="onchain-badge"
+                className="stamp stamp--small"
+                data-ink={
+                  onChainStatus === "verified"
+                    ? "teal"
+                    : anchored
+                      ? onChainStatus === "checking"
+                        ? "indigo"
+                        : "red"
+                      : "indigo"
+                }
+              >
+                {anchored
+                  ? onChainStatus === "verified"
+                    ? `✓ Anchored on chain, seen at ledger ${certificate.anchoredLedger ?? "L"}`
+                    : onChainStatus === "checking"
+                      ? "Verifying on-chain…"
+                      : "Unverifiable on-chain"
+                  : "Pending Anchor"}
               </span>
             </div>
             <p className="prose">
               {anchored
-                ? isVerified
-                  ? "The receipt's leaf hashes up to the anchored root, so this receipt is in the anchored batch."
-                  : "The proof doesn't lead from this leaf to the root. The certificate was altered or belongs to another batch."
+                ? isValidOverall
+                  ? onChainStatus === "verified"
+                    ? `The receipt's leaf hashes up to the root, and the anchored batch #${certificate.batchId} was confirmed on-chain at ledger ${certificate.anchoredLedger ?? "L"}.`
+                    : "The receipt's leaf hashes up to this root offline, but could not be verified against the ReceiptAnchor contract on-chain."
+                  : "The proof does not lead from this leaf to the root. The certificate was altered or belongs to another batch."
                 : "This receipt isn't anchored yet. Receipts are anchored in hourly batches; check again later."}
             </p>
 
@@ -127,9 +240,27 @@ export function CertificateCard({ initialCertificate }: { initialCertificate?: C
                   <dd className="value">{certificate.root}</dd>
                 </div>
               )}
+              {certificate.batchId != null && (
+                <div>
+                  <dt className="field-label">Batch ID</dt>
+                  <dd className="value" data-testid="batch-id">
+                    <span>#{certificate.batchId}</span>
+                    {certificate.anchorTx && (
+                      <span style={{ marginLeft: "0.5rem" }}>
+                        (<TxLink hash={certificate.anchorTx} />)
+                      </span>
+                    )}
+                    {certificate.receiptAnchor && (
+                      <span style={{ marginLeft: "0.5rem" }}>
+                        Contract: <ContractLink contractId={certificate.receiptAnchor} />
+                      </span>
+                    )}
+                  </dd>
+                </div>
+              )}
             </dl>
           </div>
-          {anchored && isVerified && <Seal key={inspections} size={120} pressed label="Verified seal" />}
+          {isValidOverall && <Seal key={inspections} size={120} pressed label="Verified seal" />}
         </div>
       )}
     </div>

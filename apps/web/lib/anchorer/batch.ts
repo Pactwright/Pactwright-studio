@@ -120,9 +120,12 @@ export async function buildBatch(
     }
   }
 
-  // Fetch pending receipts (batch_id is null)
+  // Fetch pending receipts (batch_id is null and not claimed in an active anchor_plan, ROADMAP S-04, #52)
   const pendingRes = await pool.query<{ leaf: string }>(
-    "SELECT leaf FROM receipts WHERE batch_id IS NULL ORDER BY leaf ASC LIMIT $1",
+    `SELECT leaf FROM receipts
+     WHERE batch_id IS NULL
+       AND leaf NOT IN (SELECT jsonb_array_elements_text(leaves) FROM anchor_plans)
+     ORDER BY leaf ASC LIMIT $1`,
     [maxBatchSize]
   );
 

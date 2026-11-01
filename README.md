@@ -187,6 +187,8 @@ pnpm db:seed                  # loads fixture pacts, receipts and accounts
 | `INDEX_START_LEDGER`, `REFUND_VAULT_IDS` | First ledger to index; RefundVaults whose refunds are indexed |
 | `ANCHORER_SECRET` | `ReceiptAnchor` admin key, testnet only (refused on pubnet) |
 | `ANCHORER_SECRET_REF` | KMS reference to the anchorer key for pubnet (not supported yet) |
+| `ANCHOR_MAX_BATCH_SIZE` | Maximum receipts to anchor per batch (default: 100, hard cap: 1000) |
+| `ANCHOR_MIN_INTERVAL_SECONDS` | Minimum elapsed seconds between anchored batches (default: 0) |
 | `VERIFIER_URL` | the verifier whose verdict counters feed the `verifier_error_rate` probe (`/api/ops/health`) |
 | `SPONSOR_ACCOUNT` | address the low-balance probe watches, when the signing key is not in the environment (pubnet) |
 | `CRON_SECRET` | Protects `/api/sync` and `/api/anchor` |

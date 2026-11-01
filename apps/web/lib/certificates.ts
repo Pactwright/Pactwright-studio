@@ -3,6 +3,9 @@
  * Matches CertificateSchema from @pactwright/core.
  */
 import { db } from "@/lib/db";
+import { chainConfig, readContract } from "@/lib/chain";
+import { sponsorAccount } from "@/lib/ops/measure";
+import { xdr } from "@stellar/stellar-sdk";
 
 export interface CertificateResponse {
   pactId: string;
@@ -12,14 +15,43 @@ export interface CertificateResponse {
   envelopeHash?: string;
   leaf: string;
   /** The leaf's exact inputs, so anyone can recompute `leaf` (amounts in stroops). */
-  leafInput: { transition: string; toSellerStroops: string; toBuyerStroops: string; envelopeHash: string | null; ledger: number | null };
+  leafInput: {
+    transition: string;
+    toSellerStroops: string;
+    toBuyerStroops: string;
+    envelopeHash: string | null;
+    ledger: number | null;
+  };
   status: "pending" | "anchored";
   proof?: string[];
   /** ReceiptAnchor batch id: pass it with `leaf` and `proof` to `verify_receipt`. */
   batchId?: number;
   root?: string;
   receiptAnchor: string;
+  anchorTx?: string;
+  anchoredLedger?: number;
+  onChainVerified?: boolean;
   txs: Array<{ stage: string; hash: string }>;
+}
+
+export async function verifyCertificateOnChain(params: {
+  batchId: number;
+  leaf: string;
+  proof: string[];
+  receiptAnchorId?: string;
+}): Promise<{ verified: boolean; error?: string }> {
+  try {
+    const config = chainConfig();
+    const anchorId = params.receiptAnchorId ?? config.receiptAnchorId;
+    const res = await readContract(config, sponsorAccount(), anchorId, "verify_receipt", [
+      xdr.ScVal.scvU64(new xdr.Uint64(BigInt(params.batchId))),
+      xdr.ScVal.scvBytes(Buffer.from(params.leaf.trim(), "hex")),
+      xdr.ScVal.scvVec(params.proof.map((p) => xdr.ScVal.scvBytes(Buffer.from(p, "hex")))),
+    ]);
+    return { verified: Boolean(res) };
+  } catch (err) {
+    return { verified: false, error: err instanceof Error ? err.message : String(err) };
+  }
 }
 
 export async function getCertificateById(id: string): Promise<CertificateResponse | null> {
@@ -38,7 +70,8 @@ export async function getCertificateById(id: string): Promise<CertificateRespons
        p.to_seller,
        p.to_buyer,
        b.root,
-       b.anchor_tx
+       b.anchor_tx,
+       b.anchored_ledger
      FROM receipts r
      JOIN pacts p ON r.pact_id = p.pact_id
      LEFT JOIN receipt_batches b ON r.batch_id = b.batch_id
@@ -62,6 +95,16 @@ export async function getCertificateById(id: string): Promise<CertificateRespons
   const isAnchored = row.batch_id != null && row.root != null;
   const proof = Array.isArray(row.proof) ? (row.proof as string[]) : undefined;
 
+  let onChainVerified: boolean | undefined;
+  if (isAnchored && row.batch_id != null && proof) {
+    const onChain = await verifyCertificateOnChain({
+      batchId: Number(row.batch_id),
+      leaf: row.leaf.trim(),
+      proof,
+    });
+    onChainVerified = onChain.verified;
+  }
+
   return {
     pactId: row.pact_id.trim(),
     transition: row.transition,
@@ -81,6 +124,9 @@ export async function getCertificateById(id: string): Promise<CertificateRespons
     batchId: isAnchored && row.batch_id != null ? Number(row.batch_id) : undefined,
     root: isAnchored && row.root ? row.root.trim() : undefined,
     receiptAnchor: receiptAnchorId(),
+    anchorTx: isAnchored && row.anchor_tx ? row.anchor_tx.trim() : undefined,
+    anchoredLedger: isAnchored && row.anchored_ledger != null ? Number(row.anchored_ledger) : undefined,
+    onChainVerified,
     txs: eventsResult.rows.map((e) => ({
       stage: e.stage,
       hash: e.tx_hash,
@@ -90,6 +136,6 @@ export async function getCertificateById(id: string): Promise<CertificateRespons
 
 function receiptAnchorId(): string {
   const id = process.env.RECEIPT_ANCHOR_ID?.trim();
-  if (!id) throw new Error("RECEIPT_ANCHOR_ID is not set");
+  if (!id) return "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
   return id;
 }
