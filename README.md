@@ -192,6 +192,12 @@ pnpm db:seed                  # loads fixture pacts, receipts and accounts
 | `VERIFIER_URL` | the verifier whose verdict counters feed the `verifier_error_rate` probe (`/api/ops/health`) |
 | `SPONSOR_ACCOUNT` | address the low-balance probe watches, when the signing key is not in the environment (pubnet) |
 | `CRON_SECRET` | Protects `/api/sync` and `/api/anchor` |
+| `OPS_ALERT_WEBHOOK` | External webhook endpoint for delivering CRITICAL ops alerts (Slack/Discord/JSON) |
+| `PROBE_MIN_SPONSOR_BALANCE_XLM` | Minimum XLM balance threshold for sponsor account (default: 10) |
+| `PROBE_MAX_INDEXER_LAG_SECONDS` | Absolute wall-clock lag threshold in seconds (default: 300) |
+| `PROBE_MAX_INDEXER_LAG_LEDGERS` | Optional override for indexer lag ledger threshold |
+| `PROBE_MAX_PENDING_CERTIFICATES` | Max pending unanchored certificates threshold (default: 500 or 2x batch size) |
+| `PROBE_MAX_VERIFIER_ERROR_RATE` | Max verifier error rate fraction threshold (default: 0.05) |
 
 ### 3. Usage
 
@@ -213,6 +219,7 @@ The routes the app serves:
 | `GET /api/sync` | Cron | One indexer cycle (requires `CRON_SECRET`) |
 | `GET /api/anchor` | Cron | One anchoring cycle (requires `CRON_SECRET`) |
 | `GET /api/ops/health` | Ops | Health and monitoring signals |
+| `GET /api/ops/liveness` | Ops | Liveness probe for deployment health checks |
 
 The data behind those pages:
 
