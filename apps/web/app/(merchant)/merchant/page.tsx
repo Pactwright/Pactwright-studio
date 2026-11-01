@@ -8,12 +8,9 @@ export default async function MerchantDashboardPage({
   searchParams?: Promise<{ seller?: string }>;
 }) {
   const params = await searchParams;
-  let data = null;
-  try {
-    data = await getMerchantDashboardData(params?.seller);
-  } catch {
-    // Database unavailable or empty
-  }
+  // A database failure throws and reaches the error boundary (5xx);
+  // null means the sellers table is genuinely empty.
+  const data = await getMerchantDashboardData(params?.seller);
 
   if (!data) {
     return (

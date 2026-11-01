@@ -1,4 +1,5 @@
 /** Public pact timeline. ROADMAP S-06. */
+import { notFound } from "next/navigation";
 import { getPactById } from "@/lib/pacts";
 import { Timeline } from "@/components/Timeline";
 import { StateBadge } from "@/components/StateBadge";
@@ -13,28 +14,11 @@ export default async function PactPage({
 }) {
   const { id } = await params;
 
-  let data = null;
-  try {
-    data = await getPactById(id);
-  } catch {
-    // Falls through to the not-found view
-  }
-
+  // A database failure throws and reaches the error boundary (5xx);
+  // only a genuinely absent pact is a 404.
+  const data = await getPactById(id);
   if (!data) {
-    return (
-      <main className="shell">
-        <article className="panel">
-          <span className="field-label">Pact ID</span>
-          <h1 className="id-heading">{id}</h1>
-          <p className="notice">
-            No pact with this ID has been indexed. Check the ID; a pact opened in the last few minutes may not be indexed yet.
-          </p>
-          <p className="prose">
-            <a href="/">Look up another pact</a>
-          </p>
-        </article>
-      </main>
-    );
+    notFound();
   }
 
   const { pact, events } = data;

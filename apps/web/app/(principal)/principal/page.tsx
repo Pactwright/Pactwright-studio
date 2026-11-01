@@ -10,12 +10,9 @@ export default async function PrincipalViewPage({
   searchParams?: Promise<{ principal?: string }>;
 }) {
   const params = await searchParams;
-  let data = null;
-  try {
-    data = await getPrincipalDashboardData(params?.principal);
-  } catch {
-    // Database unavailable or empty
-  }
+  // A database failure throws and reaches the error boundary (5xx);
+  // null means the accounts table is genuinely empty.
+  const data = await getPrincipalDashboardData(params?.principal);
 
   if (!data) {
     return (
