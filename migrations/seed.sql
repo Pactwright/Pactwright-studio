@@ -60,20 +60,24 @@ insert into verdicts (envelope_hash, pact_id, milestone, verdict, amount, envelo
   true
 ) on conflict (envelope_hash) do nothing;
 
-insert into receipt_batches (batch_id, root, leaf_count, anchor_tx, anchored_at) values (
+insert into receipt_batches (batch_id, root, leaf_count, anchor_tx, anchored_at, anchored_ledger) values (
   1,
-  'dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd',
+  'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
   1,
   'tx_anchor_batch_001',
-  now()
+  now(),
+  50000050
 ) on conflict (batch_id) do nothing;
 
-insert into receipts (leaf, pact_id, transition, batch_id, proof) values (
+insert into receipts (leaf, pact_id, transition, batch_id, proof, to_seller_stroops, to_buyer_stroops, ledger) values (
   'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
   '1111111111111111111111111111111111111111111111111111111111111111',
   'settled',
   1,
-  '["dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"]'::jsonb
+  '[]'::jsonb,
+  100000000,
+  0,
+  50000020
 ) on conflict (leaf) do nothing;
 
 -- 5. Pact 2: Active Exact-Refund Pact

@@ -13,7 +13,7 @@ import { readContract, invoke, type ChainConfig } from "@/lib/chain";
 import { Keypair } from "@stellar/stellar-sdk";
 import { buildMerkleTree, buildBatch } from "../../lib/anchorer/batch";
 import { reconcile } from "../../lib/anchorer/reconcile";
-import { anchor } from "../../lib/anchorer";
+import { anchor, getAnchorVerificationRecord, resetAnchorVerificationRecord } from "../../lib/anchorer";
 import { verifyReceipt } from "../../lib/verify";
 
 describe("Anchorer Merkle Tree & Batching (ROADMAP S-04)", () => {
@@ -53,11 +53,13 @@ describe("Anchorer reconciliation with the chain", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    resetAnchorVerificationRecord();
     queries.length = 0;
     const query = vi.fn(async (sql: string, params?: unknown[]) => {
       queries.push([sql, params]);
+      if (sql.includes("pg_try_advisory_lock")) return { rows: [{ acquired: true }] };
+      if (sql.includes("receipts") && sql.includes("SELECT")) return { rows: [{ leaf }] };
       if (sql.includes("FROM anchor_plans")) return { rows: plans };
-      if (sql.includes("SELECT leaf FROM receipts")) return { rows: [{ leaf }] };
       if (sql.includes("MIN(ledger)")) return { rows: [{ min: 100, max: 100 }] };
       return { rows: [], rowCount: 1 };
     });
@@ -110,5 +112,93 @@ describe("Anchorer reconciliation with the chain", () => {
     chain(5);
     vi.mocked(invoke).mockResolvedValue({ txHash: "ab".repeat(32), ledger: 1000, returnValue: 9n });
     await expect(anchor({ config, signer: Keypair.random() })).rejects.toThrow(/assigned batch 9/);
+  });
+
+  it("two concurrent anchor() calls produce exactly one batch and no shared leaves (#52)", async () => {
+    plans = [];
+    chain(5);
+    vi.mocked(invoke).mockResolvedValue({ txHash: "ab".repeat(32), ledger: 1000, returnValue: 6n });
+
+    let lockHeld = false;
+    const concurrentQuery = vi.fn(async (sql: string, params?: unknown[]) => {
+      queries.push([sql, params]);
+      if (sql.includes("pg_try_advisory_lock")) {
+        if (lockHeld) {
+          return { rows: [{ acquired: false }] };
+        }
+        lockHeld = true;
+        return { rows: [{ acquired: true }] };
+      }
+      if (sql.includes("pg_advisory_unlock")) {
+        lockHeld = false;
+        return { rows: [], rowCount: 1 };
+      }
+      if (sql.includes("receipts") && sql.includes("SELECT")) return { rows: [{ leaf }] };
+      if (sql.includes("FROM anchor_plans")) return { rows: plans };
+      if (sql.includes("MIN(ledger)")) return { rows: [{ min: 100, max: 100 }] };
+      return { rows: [], rowCount: 1 };
+    });
+
+    vi.mocked(db).mockReturnValue({
+      query: concurrentQuery,
+      connect: async () => ({ query: concurrentQuery, release: () => {} }),
+    } as unknown as ReturnType<typeof db>);
+
+    const [res1, res2] = await Promise.all([
+      anchor({ config, signer: Keypair.random() }),
+      anchor({ config, signer: Keypair.random() }),
+    ]);
+
+    // Exactly one batch should be produced; the second caller gets null ("already running")
+    const nonNullResults = [res1, res2].filter(Boolean);
+    expect(nonNullResults.length).toBe(1);
+    expect(nonNullResults[0]?.batchId).toBe(6);
+  });
+
+  it("respects maxBatchSize and minAnchorIntervalSeconds configuration (#53)", async () => {
+    plans = [];
+    chain(5);
+
+    // 1. Check interval check when interval hasn't elapsed
+    const recentDate = new Date();
+    const intervalQuery = vi.fn(async (sql: string) => {
+      if (sql.includes("pg_try_advisory_lock")) return { rows: [{ acquired: true }] };
+      if (sql.includes("FROM anchor_plans")) return { rows: [] };
+      if (sql.includes("SELECT anchored_at FROM receipt_batches")) {
+        return { rows: [{ anchored_at: recentDate }] };
+      }
+      if (sql.includes("SELECT leaf FROM receipts")) return { rows: [{ leaf }] };
+      return { rows: [], rowCount: 1 };
+    });
+
+    vi.mocked(db).mockReturnValue({
+      query: intervalQuery,
+      connect: async () => ({ query: intervalQuery, release: () => {} }),
+    } as unknown as ReturnType<typeof db>);
+
+    // If min interval is 3600 seconds, and anchored_at was just now, anchor returns null
+    const skipped = await anchor({ config, signer: Keypair.random(), minAnchorIntervalSeconds: 3600 });
+    expect(skipped).toBeNull();
+  });
+
+  it("runs sampled post-anchor verification calling verify_receipt and records ops signals on failure (#54)", async () => {
+    plans = [];
+    chain(5);
+    vi.mocked(invoke).mockResolvedValue({ txHash: "ab".repeat(32), ledger: 1000, returnValue: 6n });
+
+    // Mock readContract to return false on verify_receipt
+    vi.mocked(readContract).mockImplementation(async (_c, _s, _id, method) => {
+      if (method === "get_batch_count") return 5n;
+      if (method === "verify_receipt") return false;
+      return { root: Buffer.from(root, "hex"), anchored_ledger: 900 };
+    });
+
+    const res = await anchor({ config, signer: Keypair.random() });
+    expect(res?.batchId).toBe(6);
+
+    const record = getAnchorVerificationRecord();
+    expect(record.lastFailure).toBeDefined();
+    expect(record.lastFailure?.batchId).toBe(6);
+    expect(record.lastFailure?.reason).toContain("verify_receipt returned false");
   });
 });

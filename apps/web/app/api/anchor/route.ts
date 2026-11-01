@@ -15,7 +15,13 @@ export async function GET(request: Request): Promise<Response> {
   }
 
   try {
-    const result = await anchor();
+    const maxBatchSize = process.env.ANCHOR_MAX_BATCH_SIZE
+      ? parseInt(process.env.ANCHOR_MAX_BATCH_SIZE, 10)
+      : undefined;
+    const minAnchorIntervalSeconds = process.env.ANCHOR_MIN_INTERVAL_SECONDS
+      ? parseInt(process.env.ANCHOR_MIN_INTERVAL_SECONDS, 10)
+      : undefined;
+    const result = await anchor({ maxBatchSize, minAnchorIntervalSeconds });
     return Response.json({ ok: true, result });
   } catch (err) {
     console.error("Anchoring cycle failed:", err);

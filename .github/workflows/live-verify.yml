@@ -1,0 +1,40 @@
+name: live-verify
+# Scheduled live root-verifying check against testnet (ROADMAP S-04, S-10, XC-03, #54).
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+jobs:
+  live-verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: --health-cmd pg_isready --health-interval 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Run migrations and seed data
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+        run: |
+          pnpm db:migrate
+          pnpm db:seed
+      - name: Run live testnet verification suite
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+          STELLAR_NETWORK: testnet
+          STELLAR_RPC_URL: https://soroban-testnet.stellar.org
+          RECEIPT_ANCHOR_ID: ${{ secrets.RECEIPT_ANCHOR_ID }}
+          PACT_CONTRACT_ID: ${{ secrets.PACT_CONTRACT_ID }}
+          ANCHORER_SECRET: ${{ secrets.ANCHORER_SECRET }}
+        run: pnpm --filter web live:testnet
