@@ -30,9 +30,9 @@ test.describe("Pact Page (ROADMAP S-09)", () => {
 
   test("visits merchant dashboard and principal view (#58)", async ({ page }) => {
     await page.goto("/merchant");
-    await expect(page.locator("h1")).toContainText("Merchant");
+    await expect(page.locator("text=Merchant Dashboard")).toBeVisible();
 
     await page.goto("/principal");
-    await expect(page.locator("h1")).toContainText("Principal");
+    await expect(page.locator("text=Principal View")).toBeVisible();
   });
 });
