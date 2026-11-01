@@ -62,6 +62,7 @@ describe("measureOpsHealth (ROADMAP XC-03)", () => {
       name: "sponsor_balance",
       ok: false,
       alert: "CRITICAL: sponsor_balance could not be measured (Account not found: GABC); its threshold was not checked.",
+      configSource: "unmeasured",
     });
   });
 

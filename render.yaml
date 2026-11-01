@@ -20,7 +20,7 @@ projects:
             plan: free
             buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm build
             startCommand: pnpm db:migrate && pnpm --filter web start
-            healthCheckPath: /verify
+            healthCheckPath: /api/ops/liveness
             autoDeployTrigger: checksPass
             envVars:
               - key: NODE_VERSION
@@ -58,3 +58,6 @@ projects:
               # Secret shared with the cron runner; the cron routes refuse to run without it.
               - key: CRON_SECRET
                 generateValue: true
+              # External alert webhook destination for CRITICAL probes (XC-03, #45).
+              - key: OPS_ALERT_WEBHOOK
+                sync: false

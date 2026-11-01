@@ -99,4 +99,48 @@ describe("Ops monitoring and alerting (ROADMAP XC-03)", () => {
     expect(metrics.indexerLagLedgers).toBe(100_000);
     expect(evaluateSystemHealth(metrics).healthy).toBe(false);
   });
+
+  it("bounds indexer lag in wall-clock time and reports config sources (#46)", () => {
+    // Alert on wall-clock lag even when within 50% of retention
+    const retention = 120960; // 50% is 60480 ledgers (~3.5 days)
+    const lagLedgers = 100; // Well below 60480
+    const lagSeconds = 600; // 10 minutes lag
+    const maxLagSeconds = 300; // 5 minutes threshold
+
+    const probe = probeIndexerLag(lagLedgers, retention, maxLagSeconds, lagSeconds);
+    expect(probe.ok).toBe(false);
+    expect(probe.alert).toContain("WARNING: Indexer wall-clock lag (600s >= threshold 300s)");
+    expect(probe.configSource).toContain("explicit:maxLagSeconds(300s)");
+  });
+
+  it("makes all four probe thresholds configurable via environment variables (#46)", () => {
+    const originalEnv = { ...process.env };
+    try {
+      process.env.PROBE_MIN_SPONSOR_BALANCE_XLM = "20";
+      process.env.PROBE_MAX_INDEXER_LAG_SECONDS = "120";
+      process.env.PROBE_MAX_PENDING_CERTIFICATES = "1000";
+      process.env.PROBE_MAX_VERIFIER_ERROR_RATE = "0.02";
+
+      const sponsor = probeSponsorBalance(15);
+      expect(sponsor.threshold).toBe(20);
+      expect(sponsor.configSource).toBe("env:PROBE_MIN_SPONSOR_BALANCE_XLM");
+      expect(sponsor.ok).toBe(false);
+
+      const lag = probeIndexerLag(10, 10000, undefined, 150);
+      expect(lag.configSource).toContain("env:PROBE_MAX_INDEXER_LAG_SECONDS(120s)");
+      expect(lag.ok).toBe(false);
+
+      const pending = probePendingCertificates(800);
+      expect(pending.threshold).toBe(1000);
+      expect(pending.configSource).toBe("env:PROBE_MAX_PENDING_CERTIFICATES");
+      expect(pending.ok).toBe(true);
+
+      const verifier = probeVerifierErrorRate(100, 3);
+      expect(verifier.threshold).toBe(0.02);
+      expect(verifier.configSource).toBe("env:PROBE_MAX_VERIFIER_ERROR_RATE");
+      expect(verifier.ok).toBe(false);
+    } finally {
+      process.env = originalEnv;
+    }
+  });
 });
