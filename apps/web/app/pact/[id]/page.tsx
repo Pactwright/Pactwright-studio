@@ -1,4 +1,5 @@
-/** Public pact timeline. ROADMAP S-06. */
+/** Public pact timeline. ROADMAP S-06, S-07. */
+import { notFound } from "next/navigation";
 import { getPactById } from "@/lib/pacts";
 import { Timeline } from "@/components/Timeline";
 import { StateBadge } from "@/components/StateBadge";
@@ -13,28 +14,16 @@ export default async function PactPage({
 }) {
   const { id } = await params;
 
-  let data = null;
-  try {
-    data = await getPactById(id);
-  } catch {
-    // Falls through to the not-found view
+  // Validate 64-hex format before query
+  if (!id || !/^[0-9a-fA-F]{64}$/.test(id)) {
+    notFound();
   }
 
+  // Allow database errors to bubble to error.tsx boundary so HTTP 500 is served instead of fake 404
+  const data = await getPactById(id);
+
   if (!data) {
-    return (
-      <main className="shell">
-        <article className="panel">
-          <span className="field-label">Pact ID</span>
-          <h1 className="id-heading">{id}</h1>
-          <p className="notice">
-            No pact with this ID has been indexed. Check the ID; a pact opened in the last few minutes may not be indexed yet.
-          </p>
-          <p className="prose">
-            <a href="/">Look up another pact</a>
-          </p>
-        </article>
-      </main>
-    );
+    notFound();
   }
 
   const { pact, events } = data;
@@ -45,7 +34,7 @@ export default async function PactPage({
         <header className="pact-head">
           <div>
             <span className="field-label">Pact ID</span>
-            <h1>{pact.pact_id}</h1>
+            <h1 className="id-heading">{pact.pact_id}</h1>
             <div className="pact-stamp">
               <StateBadge state={pact.state} size="large" />
             </div>
@@ -83,6 +72,24 @@ export default async function PactPage({
             </dd>
           </div>
           <div>
+            <dt className="field-label">Condition hash</dt>
+            <dd className="value mono">
+              <code className="hash-code">{pact.condition_hash}</code>
+            </dd>
+          </div>
+          <div>
+            <dt className="field-label">Metered</dt>
+            <dd className="value">{pact.metered ? "Yes (Units)" : "No"}</dd>
+          </div>
+          <div>
+            <dt className="field-label">Verdict deadline</dt>
+            <dd className="value">{pact.verdict_deadline ? `Ledger #${pact.verdict_deadline}` : "None"}</dd>
+          </div>
+          <div>
+            <dt className="field-label">Settle deadline</dt>
+            <dd className="value">{pact.settle_deadline ? `Ledger #${pact.settle_deadline}` : "None"}</dd>
+          </div>
+          <div>
             <dt className="field-label">If no verdict arrives in time</dt>
             <dd className="value">{silenceName(pact.silence)}</dd>
           </div>
@@ -94,11 +101,22 @@ export default async function PactPage({
                   {pact.resource_url}
                 </a>
               ) : (
-                "Not recorded on\u2011chain"
+                "Resource URL held off-chain by buyer and seller under condition hash"
               )}
             </dd>
           </div>
         </dl>
+
+        {pact.condition && Object.keys(pact.condition).length > 0 && (
+          <section aria-labelledby="condition-title" style={{ marginTop: "1.5rem" }}>
+            <h2 id="condition-title" className="field-label">
+              Agreed condition
+            </h2>
+            <pre className="raw-event" style={{ marginTop: "0.5rem" }}>
+              <code>{JSON.stringify(pact.condition, null, 2)}</code>
+            </pre>
+          </section>
+        )}
       </article>
 
       <section aria-labelledby="timeline-title">

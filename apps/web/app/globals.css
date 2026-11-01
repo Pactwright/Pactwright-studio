@@ -18,7 +18,7 @@
   --text: #e6eaf5;
   --text-strong: #f4f6fc;
   --muted: #8c96b3;
-  --faint: #66708f;
+  --faint: #94a3b8;
 
   /* Brand and state inks */
   --teal: #2dd4bf;
@@ -868,8 +868,12 @@ code,
   .certificate-result {
     grid-template-columns: 1fr;
   }
+  .ledger-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
   .ledger .secondary {
-    display: none;
+    font-size: 0.8125rem;
   }
 }
 

@@ -116,4 +116,22 @@ describe("Principal View (ROADMAP P7-11)", () => {
     expect(data?.metrics.livePactsCount).toBe(1);
     expect(data?.livePacts[0].pact_id).toBe(mockLivePacts[0].pact_id);
   });
+
+  it("distinguishes empty state from database errors (#56)", async () => {
+    // 1. Empty state: returns null when 0 sellers or principals found
+    mockQuery.mockResolvedValueOnce({ rows: [] });
+    const emptyMerchant = await getMerchantDashboardData();
+    expect(emptyMerchant).toBeNull();
+
+    mockQuery.mockResolvedValueOnce({ rows: [] });
+    const emptyPrincipal = await getPrincipalDashboardData();
+    expect(emptyPrincipal).toBeNull();
+
+    // 2. Error state: bubbles error up instead of returning null
+    mockQuery.mockRejectedValueOnce(new Error("Connection refused"));
+    await expect(getMerchantDashboardData()).rejects.toThrow("Connection refused");
+
+    mockQuery.mockRejectedValueOnce(new Error("Database pool exhausted"));
+    await expect(getPrincipalDashboardData()).rejects.toThrow("Database pool exhausted");
+  });
 });

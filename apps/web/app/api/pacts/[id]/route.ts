@@ -6,8 +6,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ): Promise<Response> {
   const { id } = await params;
-  if (!id) {
-    return Response.json({ error: "Missing pact ID" }, { status: 400 });
+  if (!id || !/^[0-9a-fA-F]{64}$/.test(id)) {
+    return Response.json({ error: "Invalid pact ID format (expected 64 hex characters)" }, { status: 400 });
   }
 
   try {
