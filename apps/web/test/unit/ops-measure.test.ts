@@ -155,6 +155,39 @@ describe("readVerifierCounters", () => {
     await expect(readVerifierCounters("https://v.example", responder(503, { error: "internal_error" }))).rejects.toThrow(/HTTP 503/);
   });
 
+  it("retries once when the verifier answers 502 while waking from sleep", async () => {
+    const statuses = [502, 200];
+    const seen: number[] = [];
+    const fetchImpl = (async () => {
+      const status = statuses.shift()!;
+      seen.push(status);
+      return new Response(JSON.stringify({ verdictRequests: 4, verdictFailures: 0 }), { status });
+    }) as unknown as typeof fetch;
+    expect(await readVerifierCounters("https://v.example", fetchImpl)).toEqual({ totalRequests: 4, errorRequests: 0 });
+    expect(seen).toEqual([502, 200]);
+  });
+
+  it("retries once after a timeout, and stays unmeasured if the retry fails too", async () => {
+    let calls = 0;
+    const timeout = Object.assign(new Error("timed out"), { name: "TimeoutError" });
+    const fetchImpl = (async () => {
+      calls++;
+      throw timeout;
+    }) as unknown as typeof fetch;
+    await expect(readVerifierCounters("https://v.example", fetchImpl)).rejects.toThrow(/timed out/);
+    expect(calls).toBe(2);
+  });
+
+  it("does not retry a verifier that answers 500", async () => {
+    let calls = 0;
+    const fetchImpl = (async () => {
+      calls++;
+      return new Response("{}", { status: 500 });
+    }) as unknown as typeof fetch;
+    await expect(readVerifierCounters("https://v.example", fetchImpl)).rejects.toThrow(/HTTP 500/);
+    expect(calls).toBe(1);
+  });
+
   it("rejects a body that is not JSON at all", async () => {
     const fetchImpl = (async () => new Response("<html>proxy error</html>", { status: 200 })) as unknown as typeof fetch;
     await expect(readVerifierCounters("https://v.example", fetchImpl)).rejects.toThrow(/no verdict counters/);
