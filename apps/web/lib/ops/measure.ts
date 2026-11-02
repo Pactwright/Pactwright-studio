@@ -124,13 +124,34 @@ export async function readSponsorBalanceXlm(config: ChainConfig, address: string
   return stroopsToXlm(entry.balance().toString());
 }
 
+/** Answers a sleeping Render free-tier service gives while it wakes (about 25 s). */
+const COLD_START_STATUSES = new Set([502, 503, 504]);
+
+const isTimeout = (e: unknown) => e instanceof Error && (e.name === "TimeoutError" || e.name === "AbortError");
+
 /**
  * The verifier's verdict counters over `GET <VERIFIER_URL>/health`. A deployment that reports no
  * counters is not a deployment with a 0% error rate, so this throws instead of guessing.
+ *
+ * The testnet verifier sleeps when idle, so the first request after a sleep fails while it wakes.
+ * One retry with room for the wake-up tells a cold start from a verifier that is really down;
+ * if the retry fails too, the probe stays unmeasured.
  */
-export async function readVerifierCounters(url: string, fetchImpl: typeof fetch = globalThis.fetch): Promise<VerifierCounters> {
+export async function readVerifierCounters(
+  url: string,
+  fetchImpl: typeof fetch = globalThis.fetch,
+  wakeTimeoutMs = 45_000,
+): Promise<VerifierCounters> {
   const base = url.replace(/\/+$/, "");
-  const res = await fetchImpl(`${base}/health`, { signal: AbortSignal.timeout(10_000) });
+  const get = (ms: number) => fetchImpl(`${base}/health`, { signal: AbortSignal.timeout(ms) });
+  let res: Response;
+  try {
+    res = await get(10_000);
+    if (COLD_START_STATUSES.has(res.status)) res = await get(wakeTimeoutMs);
+  } catch (e) {
+    if (!isTimeout(e)) throw e;
+    res = await get(wakeTimeoutMs);
+  }
   if (!res.ok) throw new Error(`verifier /health returned HTTP ${res.status}`);
   const body = (await res.json().catch(() => undefined)) as { verdictRequests?: unknown; verdictFailures?: unknown } | undefined;
   if (typeof body?.verdictRequests !== "number" || typeof body?.verdictFailures !== "number") {
