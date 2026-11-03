@@ -92,7 +92,7 @@ All pull requests—especially external submissions—are scanned by automated f
 3. **Unapproved Executable Binaries**:
    - Committing compiled binaries (`.exe`, `.so`, `.dylib`, `.dll`, ELF, Mach-O) or unvetted blobs is prohibited.
 4. **CI/CD Workflow Tampering**:
-   - Fork PRs modifying files in `.github/workflows/` or root deployment configs (`render.yaml`) are quarantined and require explicit review from `@mallison031`.
+   - Fork PRs modifying files in `.github/workflows/` or deployment configs (`vercel.json`) are quarantined and require explicit review from `@mallison031`.
 5. **Dependency Supply Chain**:
    - Lockfiles must be frozen (`cargo --locked`, `pnpm --frozen-lockfile`). No direct unvetted `git://` or `http://` package dependencies.
 
