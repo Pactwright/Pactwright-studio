@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <a href="https://pactwright-studio-testnet.onrender.com"><strong>Open Studio</strong></a> ·
+  <a href="https://pactwright-studio.vercel.app"><strong>Open Studio</strong></a> ·
   <a href="https://pactwright.github.io/docs/"><strong>Documentation</strong></a> ·
   <a href="#-quick-start"><strong>Quick start</strong></a> ·
   <a href="#-anchoring-and-dashboards"><strong>Anchoring</strong></a> ·
@@ -34,7 +34,7 @@
 > *One agent, four purchases, four different endings on Stellar testnet: paid pro rata for 3 of 4 pages, refunded for a tortilla recipe, refunded when nobody answered, and half refunded after a dispute.*
 
 > [!IMPORTANT]
-> **Live on testnet: [pactwright-studio-testnet.onrender.com](https://pactwright-studio-testnet.onrender.com).** It indexes the
+> **Live on testnet: [pactwright-studio.vercel.app](https://pactwright-studio.vercel.app).** It indexes the
 > `pact` contract every 5 minutes and anchors receipts on the deployed `ReceiptAnchor` every hour;
 > every proof verifies on-chain with `verify_receipt`. Testnet only, not audited. The seller and
 > agent-budget pages still show sample data. [What works today](#what-works-today) has the details.
@@ -97,7 +97,7 @@ How a receipt becomes provable, the trust model, and the anchoring and dashboard
 | Merchant dashboard, principal view | 🧪 Seeded data | No sign-in yet |
 | Ops health probes | 🚧 Partial | Indexer lag, RPC retention and the anchoring backlog are measured; sponsor balance and verifier error rate aren't yet |
 | Pollar Studio storefront template | ✅ Template | `templates/pollar-studio`, built with the public Pollar SDK only |
-| Hosted deployment | ✅ Testnet | [pactwright-studio-testnet.onrender.com](https://pactwright-studio-testnet.onrender.com) on Render. The [`studio-cron`](.github/workflows/studio-cron.yml) workflow syncs every 5 minutes and anchors hourly |
+| Hosted deployment | ✅ Testnet | [pactwright-studio.vercel.app](https://pactwright-studio.vercel.app) on Vercel. The [`studio-cron`](.github/workflows/studio-cron.yml) workflow syncs every 5 minutes and anchors hourly |
 
 ## ⚙️ Supported Versions & Compatibility
 
@@ -193,16 +193,16 @@ pnpm --filter web e2e         # 3 Playwright end-to-end tests
 
 ### Deploy
 
-Testnet is live at [pactwright-studio-testnet.onrender.com](https://pactwright-studio-testnet.onrender.com), hosted on Render from [`render.yaml`](render.yaml): the web app and a managed Postgres. Migrations run before every deploy. Render's free tier has no cron jobs, so the [`studio-cron`](.github/workflows/studio-cron.yml) GitHub Actions workflow calls `/api/sync` every 5 minutes and `/api/anchor` every hour. It needs the repository secrets `STUDIO_URL` and `CRON_SECRET` (the same value as on Render), and fails loudly without them.
+Testnet is live at [pactwright-studio.vercel.app](https://pactwright-studio.vercel.app), hosted on Vercel (project `pactwright-studio`, root directory `apps/web`). [`apps/web/vercel.json`](apps/web/vercel.json) runs the migrations before every build. Vercel's Hobby plan only runs crons daily, so the [`studio-cron`](.github/workflows/studio-cron.yml) GitHub Actions workflow calls `/api/sync` every 5 minutes and `/api/anchor` every hour. It needs the repository secrets `STUDIO_URL` and `CRON_SECRET` (the same value as on Vercel), and fails loudly without them.
 
-1. Render Dashboard → **New → Blueprint** → this repo.
-2. Fill in the `sync: false` values when asked. They stay in Render's secret store: `ANCHORER_SECRET` (the `ReceiptAnchor` admin key, testnet only), `INDEX_START_LEDGER`, `REFUND_VAULT_IDS` and `FACILITATOR_URL`, and `CRON_SECRET` (also set as a repository secret for the `studio-cron` workflow).
+1. `vercel link` from the repository root, choosing `apps/web` as the root directory, then `vercel deploy --prod`.
+2. Set the Production environment variables (`vercel env add <NAME> production`): `DATABASE_URL`, `ANCHORER_SECRET` (the `ReceiptAnchor` admin key, testnet only), `RECEIPT_ANCHOR_ID`, `PACT_CONTRACT_ID`, `INDEX_START_LEDGER`, `REFUND_VAULT_IDS`, `STELLAR_NETWORK`, `NEXT_PUBLIC_STELLAR_NETWORK`, `STELLAR_NETWORK_PASSPHRASE`, `STELLAR_RPC_URL`, `VERIFIER_URL`, `FACILITATOR_URL`, and `CRON_SECRET` (also set as a repository secret for the `studio-cron` workflow).
 3. Check `/api/ops/health`: it reports all four XC-03 signals — sponsor balance, indexer lag (must stay
    under 50% of RPC retention), pending certificates and the verifier error rate. A signal it cannot
    measure is listed as an alert, never as a pass, so an unreadable verifier or a missing `VERIFIER_URL`
    shows up as a 503 rather than as an all-clear.
 
-Scheduling lives in one place: `.github/workflows/studio-cron.yml` calls `/api/sync` and `/api/anchor` with the `CRON_SECRET` bearer token. There is no Vercel deployment, so the repo no longer carries a second, silently-dead set of cron definitions next to the real ones.
+Scheduling lives in one place: `.github/workflows/studio-cron.yml` calls `/api/sync` and `/api/anchor` with the `CRON_SECRET` bearer token. `vercel.json` deliberately has no `crons`, so there is no second, silently-dead set of schedules next to the real ones.
 
 ```bash
 DATABASE_URL="<hosted-postgres-url>" pnpm db:migrate

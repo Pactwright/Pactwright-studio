@@ -1,23 +1,23 @@
 #!/usr/bin/env node
 /**
  * Automated synthetic keepalive probe for Pactwright live testnet services.
- * Keeps Render free-tier services awake and verifies 24/7 endpoint availability.
+ * Checks that the hosted testnet services answer, around the clock.
  */
 
 const ENDPOINTS = [
   {
     name: "Studio Liveness",
-    url: process.env.STUDIO_LIVENESS_URL || "https://pactwright-studio-testnet.onrender.com/api/ops/liveness",
+    url: process.env.STUDIO_LIVENESS_URL || "https://pactwright-studio.vercel.app/api/ops/liveness",
     expectedStatus: 200,
   },
   {
     name: "Facilitator Healthz",
-    url: process.env.FACILITATOR_HEALTH_URL || "https://pactwright-facilitator-testnet.onrender.com/healthz",
+    url: process.env.FACILITATOR_HEALTH_URL || "https://pactwright-facilitator.vercel.app/healthz",
     expectedStatus: 200,
   },
   {
     name: "Verifier Health",
-    url: process.env.VERIFIER_HEALTH_URL || "https://pactwright-verifier-testnet.onrender.com/health",
+    url: process.env.VERIFIER_HEALTH_URL || "https://pactwright-verifier.vercel.app/health",
     expectedStatus: 200,
   },
 ];

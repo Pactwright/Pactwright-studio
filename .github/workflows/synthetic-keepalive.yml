@@ -2,7 +2,7 @@ name: synthetic-keepalive
 
 on:
   schedule:
-    # Run every 10 minutes to prevent Render free-tier web services from sleeping
+    # Probe the hosted testnet services every 10 minutes
     - cron: "*/10 * * * *"
   workflow_dispatch:
 

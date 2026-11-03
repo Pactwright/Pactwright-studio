@@ -1,7 +1,7 @@
 name: studio-cron
 # Drives the deployed Studio (ROADMAP S-02, S-04, S-10): indexer sync every 5 minutes, anchoring
-# hourly. Render's free tier has no cron jobs, so GitHub Actions calls the protected routes.
-# Needs repository secrets STUDIO_URL and CRON_SECRET (the same value as on the Render service).
+# hourly. Vercel's Hobby plan only runs crons daily, so GitHub Actions calls the protected routes.
+# Needs repository secrets STUDIO_URL and CRON_SECRET (the same value as on the Vercel project).
 on:
   schedule:
     - cron: "*/5 * * * *" # sync

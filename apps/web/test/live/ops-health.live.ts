@@ -5,7 +5,7 @@
  *
  *   DATABASE_URL=postgres://… STELLAR_NETWORK=testnet STELLAR_RPC_URL=https://soroban-testnet.stellar.org \
  *   PACT_CONTRACT_ID=… RECEIPT_ANCHOR_ID=… SPONSOR_ACCOUNT=GAKQ… \
- *   VERIFIER_URL=https://pactwright-verifier-testnet.onrender.com \
+ *   VERIFIER_URL=https://pactwright-verifier.vercel.app \
  *   pnpm --filter web live:testnet
  *
  * Reads only: it sends no transaction.
