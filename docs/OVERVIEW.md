@@ -76,7 +76,7 @@ Every figure in this README is recorded somewhere you can open, not remembered:
 
 - **Anchoring**: batch 1's transaction is linked above; `verify_receipt` on the deployed `ReceiptAnchor` confirms each leaf in it.
 - **Tests**: 62 unit tests across 12 suites, measured 2026-10-30 with `pnpm test`; the 3 Playwright end-to-end specs run in [`e2e.yml`](../.github/workflows/e2e.yml), not locally.
-- **Testnet purchase**: the pact the hosted verifier judged with its real model is [`40725564…5c55`](https://pactwright-studio-testnet.onrender.com/pact/4072556402d709463f7cb888a4a9e03b061d906f0b7ca5c49ebb2eec4e7d5c55).
+- **Testnet purchase**: the pact the hosted verifier judged with its real model is [`40725564…5c55`](https://pactwright-studio.vercel.app/pact/4072556402d709463f7cb888a4a9e03b061d906f0b7ca5c49ebb2eec4e7d5c55).
 - **Network figures** for the pacts below come from the [Pactwright-Kit testnet e2e](https://github.com/Pactwright/Pactwright-Kit/tree/main/e2e/testnet) report, not from Studio.
 
 ### Built on

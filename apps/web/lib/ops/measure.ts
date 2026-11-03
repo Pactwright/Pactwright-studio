@@ -124,7 +124,7 @@ export async function readSponsorBalanceXlm(config: ChainConfig, address: string
   return stroopsToXlm(entry.balance().toString());
 }
 
-/** Answers a sleeping Render free-tier service gives while it wakes (about 25 s). */
+/** Answers a host gives while a sleeping or cold service starts. */
 const COLD_START_STATUSES = new Set([502, 503, 504]);
 
 const isTimeout = (e: unknown) => e instanceof Error && (e.name === "TimeoutError" || e.name === "AbortError");
