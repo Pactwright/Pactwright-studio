@@ -21,7 +21,7 @@ describe("API data models & queries", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    process.env.RECEIPT_ANCHOR_ID = "CAEO5GBC3ULRC5RYBSCSOXLNXHU2HZAHNW5HY5LZM3DIPFMX357ILNJ2";
+    process.env.RECEIPT_ANCHOR_ID = "CCLPJIYCSZXAK5HQNVOBO634YGATAL7ASE6HZRFQLKB3TJHMK7NCEDXZ";
     vi.mocked(db).mockReturnValue({
       query: mockQuery,
     } as unknown as ReturnType<typeof db>);
