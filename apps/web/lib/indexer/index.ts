@@ -219,6 +219,38 @@ export class OutsideRetentionError extends Error {
   }
 }
 
+/** Why one source could not be read, named so an operator can act on that source alone. */
+export interface SourceFailure {
+  source: string;
+  /** `outsideRetention` means the cursor is older than the RPC keeps events; only a backfill can fix it. */
+  reason: "outsideRetention" | "readFailed";
+  /** The ledger this source's pass stopped at. Its cursor is unchanged, so nothing was marked as read. */
+  cursor: number;
+  /** The oldest ledger the RPC still has. */
+  oldestLedger: number;
+  message: string;
+}
+
+/**
+ * Raised at the end of a pass in which at least one source could not be read.
+ *
+ * Every other source was still indexed, and `report` says what was written, so a stale cursor on one
+ * RefundVault no longer freezes the `pact` source behind it while still refusing to pretend the gap
+ * was read (#49).
+ */
+export class SyncFailuresError extends Error {
+  constructor(
+    public readonly failures: SourceFailure[],
+    public readonly report: SyncReport,
+  ) {
+    super(
+      `${failures.length} of ${report.sources.length + failures.length} sources could not be read: ` +
+        failures.map((f) => `${f.source} (${f.reason}, cursor ${f.cursor}, oldest ${f.oldestLedger})`).join("; "),
+    );
+    this.name = "SyncFailuresError";
+  }
+}
+
 export interface SyncResult {
   source: string;
   fromLedger: number;
@@ -230,6 +262,8 @@ export interface SyncResult {
 /** One pass over every source, plus what it left behind and what a replay recovered. */
 export interface SyncReport {
   sources: SyncResult[];
+  /** Sources this pass could not read; their cursors did not move. Empty when the pass succeeded. */
+  failures: SourceFailure[];
   /** Deferred events written by this pass's replay. */
   replayed: number;
   /** Deferred events still waiting after the replay. */
@@ -240,19 +274,39 @@ export interface SyncReport {
 export async function sync(config: ChainConfig = chainConfig()): Promise<SyncReport> {
   const health = await server(config).getHealth();
   const results: SyncResult[] = [];
+  const failures: SourceFailure[] = [];
   for (const source of sources(config)) {
     const cursor = await getCursor(source.name, 0);
     // Re-read the cursor's own ledger: writes are idempotent, so a partly indexed ledger is safe.
     const fromLedger = cursor > 0 ? cursor : (config.startLedger ?? health.oldestLedger);
-    if (fromLedger < health.oldestLedger) throw new OutsideRetentionError(source.name, fromLedger, health.oldestLedger);
-    const page = await fetchEvents(source, fromLedger, config);
-    const persisted = await persistEvents(page.events);
-    // The cursor moves to what this pass actually read, never to the tip it has not read yet.
-    await advance(source.name, page.throughLedger);
-    results.push({ source: source.name, fromLedger, toLedger: page.throughLedger, ...persisted });
+    try {
+      if (fromLedger < health.oldestLedger) throw new OutsideRetentionError(source.name, fromLedger, health.oldestLedger);
+      const page = await fetchEvents(source, fromLedger, config);
+      const persisted = await persistEvents(page.events);
+      // The cursor moves to what this pass actually read, never to the tip it has not read yet.
+      await advance(source.name, page.throughLedger);
+      results.push({ source: source.name, fromLedger, toLedger: page.throughLedger, ...persisted });
+    } catch (err) {
+      // One source's gap is that source's problem: record it and keep the others moving (#49).
+      const outside = err instanceof OutsideRetentionError;
+      failures.push({
+        source: source.name,
+        reason: outside ? "outsideRetention" : "readFailed",
+        cursor: fromLedger,
+        oldestLedger: health.oldestLedger,
+        message: err instanceof Error ? err.message : String(err),
+      });
+    }
   }
   // `sources()` indexes `pact` first, so an event whose pact opened in this pass is already written; the
   // replay below is for the ones whose pact arrives on a later pass, or from another source (#51).
   const replay = await replayDeferred();
-  return { sources: results, replayed: replay.replayed, deferred: replay.remaining };
+  const report: SyncReport = {
+    sources: results,
+    failures,
+    replayed: replay.replayed,
+    deferred: replay.remaining,
+  };
+  if (failures.length > 0) throw new SyncFailuresError(failures, report);
+  return report;
 }
