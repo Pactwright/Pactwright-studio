@@ -203,7 +203,7 @@ Testnet is live at [pactwright-studio.vercel.app](https://pactwright-studio.verc
    pending certificates and the verifier error rate. A signal it cannot measure is listed as an alert,
    never as a pass, so an unreadable verifier or a missing `VERIFIER_URL` shows up as a 503, not an all-clear.
 
-Scheduling lives in one place: `.github/workflows/studio-cron.yml` calls `/api/sync` and `/api/anchor` with the `CRON_SECRET` bearer token. `vercel.json` deliberately has no `crons`, so there is no second, silently-dead set of schedules next to the real ones.
+Scheduling lives in one place: `.github/workflows/studio-cron.yml` calls `/api/sync` and `/api/anchor` with the `CRON_SECRET` bearer token. `apps/web/vercel.json` deliberately has no `crons`, so there is no second, silently-dead set of schedules next to the real ones.
 
 ```bash
 DATABASE_URL="<hosted-postgres-url>" pnpm db:migrate
