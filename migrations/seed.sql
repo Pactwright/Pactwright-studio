@@ -144,7 +144,9 @@ insert into receipts (leaf, pact_id, transition, batch_id, proof) values (
 ) on conflict (leaf) do nothing;
 
 -- 7. Sync state
+-- Only sources the indexer actually reads. 'facilitator' used to be seeded here at the same ledger as
+-- 'pact', for a source no pass touches — and a future facilitator source would have read it as "already
+-- indexed through 50000200" and skipped everything before it (studio#50).
 insert into sync_state (source, cursor_ledger) values
-  ('pact', 50000200),
-  ('facilitator', 50000200)
+  ('pact', 50000200)
 on conflict (source) do update set cursor_ledger = excluded.cursor_ledger;
