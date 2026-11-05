@@ -91,12 +91,12 @@ How a receipt becomes provable, the trust model, and the anchoring and dashboard
 | Anchorer: `anchor_batch` | ✅ Testnet | Real transactions signed by the ReceiptAnchor admin key. Batch 1: 9 receipts, [`be51068e…`](https://stellar.expert/explorer/testnet/tx/be51068eea65b8f47799253ca45bd5e5d9c014d7cae0b873f19150658d8edfb0) |
 | Crash safety | ✅ Working | Each batch is recorded as a plan before it's sent; the next run settles plans against the chain, so a batch is never anchored twice or lost |
 | Certificates | ✅ Testnet | Every anchored proof verifies offline and with ReceiptAnchor's own `verify_receipt` |
-| Lag alerting | ✅ Working | Alert at 50% of RPC retention |
+| Lag alerting | ✅ Working | Alert past 11394 ledgers (~15.8 h) — twice the worst gap the scheduler actually delivers — capped at 50% of RPC retention. Field by field in [Ops health](#ops-health) |
 | Backfill from a history source | ✅ Working | If the cursor falls outside RPC retention, `sync` backfills from an archival RPC (`HISTORY_RPC_URL`) or an HTTP history source; without one it stops with an error rather than skip events |
 | M0 pacts | 🚧 Not yet | M0 pacts aren't opened on-chain, so Studio must learn of them from the facilitator — the third source `S-02` names and studio#50 is about adding. Until that source exists their refunds stay in `deferred_events`, counted and retried each pass, so nothing is lost when it arrives |
 | Home page, pact timeline, certificate viewer | ✅ Testnet | Live; Playwright end-to-end tests. Checked at phone, tablet and desktop sizes |
 | Merchant dashboard, principal view | 🧪 Seeded data | No sign-in yet |
-| Ops health probes | 🚧 Partial | Indexer lag, RPC retention and the anchoring backlog are measured; sponsor balance and verifier error rate aren't yet |
+| Ops health probes | ✅ Working | All five probes are measured from their own source: sponsor balance, indexer lag, RPC retention and the anchoring backlog, the verifier error rate, and the sampled post-anchor verification. What each field means, and what a 503 says, is in [Ops health](#ops-health) |
 | Pollar Studio storefront template | ✅ Template | `templates/pollar-studio`, built with the public Pollar SDK only |
 | Hosted deployment | ✅ Testnet | [pactwright-studio.vercel.app](https://pactwright-studio.vercel.app) on Vercel. The [`studio-cron`](.github/workflows/studio-cron.yml) workflow drives syncs and hourly anchoring; the syncs that actually arrive are measured at 8.3 a day, not every 5 minutes ([Deploy](#deploy)) |
 
@@ -145,9 +145,9 @@ pnpm db:seed                  # loads fixture pacts, receipts and accounts
 | `CRON_SECRET` | Protects `/api/sync` and `/api/anchor` |
 | `OPS_ALERT_WEBHOOK` | External webhook endpoint for delivering CRITICAL ops alerts (Slack/Discord/JSON) |
 | `PROBE_MIN_SPONSOR_BALANCE_XLM` | Minimum XLM balance threshold for sponsor account (default: 10) |
-| `PROBE_MAX_INDEXER_LAG_SECONDS` | Absolute wall-clock lag threshold in seconds (default: 300) |
+| `PROBE_MAX_INDEXER_LAG_SECONDS` | Optional wall-clock lag threshold in seconds; when set it is checked in addition to the ledger threshold. Unset by default |
 | `PROBE_MAX_INDEXER_LAG_LEDGERS` | Optional override for indexer lag ledger threshold |
-| `PROBE_MAX_PENDING_CERTIFICATES` | Max pending unanchored certificates threshold (default: 500 or 2x batch size) |
+| `PROBE_MAX_PENDING_CERTIFICATES` | Max pending unanchored certificates threshold (default: the larger of 500 and 2 × `ANCHOR_MAX_BATCH_SIZE`) |
 | `PROBE_MAX_VERIFIER_ERROR_RATE` | Max verifier error rate fraction threshold (default: 0.05) |
 
 ### 3. Usage
@@ -169,7 +169,7 @@ The routes the app serves, described for programs in [`docs/openapi.yaml`](docs/
 | `GET /api/certificates/:id` | API | A certificate: `pending` until anchored, then `anchored` with its proof |
 | `GET /api/sync` | Cron | One indexer cycle (requires `CRON_SECRET`) |
 | `GET /api/anchor` | Cron | One anchoring cycle (requires `CRON_SECRET`) |
-| `GET /api/ops/health` | Ops | Health and monitoring signals |
+| `GET /api/ops/health` | Ops | Health and monitoring signals, field by field in [Ops health](#ops-health) |
 | `GET /api/ops/liveness` | Ops | Liveness probe for deployment health checks |
 
 The data behind those pages:
@@ -198,7 +198,7 @@ Testnet is live at [pactwright-studio.vercel.app](https://pactwright-studio.verc
 
 1. `vercel link` from the repository root, choosing `apps/web` as the root directory, then `vercel deploy --prod`.
 2. Set the Production environment variables (`vercel env add <NAME> production`): `DATABASE_URL`, `ANCHORER_SECRET` (the `ReceiptAnchor` admin key, testnet only), `RECEIPT_ANCHOR_ID`, `PACT_CONTRACT_ID`, `INDEX_START_LEDGER`, `REFUND_VAULT_IDS`, `STELLAR_NETWORK`, `NEXT_PUBLIC_STELLAR_NETWORK`, `STELLAR_NETWORK_PASSPHRASE`, `STELLAR_RPC_URL`, `VERIFIER_URL`, `FACILITATOR_URL`, and `CRON_SECRET` (also set as a repository secret for the `studio-cron` workflow).
-3. Check `/api/ops/health`: it reports all four XC-03 signals — sponsor balance, indexer lag (must stay
+3. Check `/api/ops/health`: it reports every XC-03 signal — sponsor balance, indexer lag (must stay
    under 11394 ledgers, about 15.8 h: twice the worst measured sync gap, capped at 50% of RPC retention),
    pending certificates and the verifier error rate. A signal it cannot measure is listed as an alert,
    never as a pass, so an unreadable verifier or a missing `VERIFIER_URL` shows up as a 503, not an all-clear.
@@ -208,6 +208,44 @@ Scheduling lives in one place: `.github/workflows/studio-cron.yml` calls `/api/s
 ```bash
 DATABASE_URL="<hosted-postgres-url>" pnpm db:migrate
 ```
+
+### Ops health
+
+`GET /api/ops/health` answers `200` when every probe cleared its threshold and `503` when any did not, so a monitor can act on the status code alone. The body has four fields:
+
+| Field | Contents |
+|---|---|
+| `healthy` | `true` only when `alerts` is empty. |
+| `probes` | One entry per signal in the table below, plus one entry for each signal whose source could not be read. |
+| `alerts` | The `alert` text of every failing probe, in probe order. |
+| `metrics` | The raw readings the thresholds were applied to, keyed by signal. |
+
+Each probe in `probes` carries:
+
+| Probe field | Meaning |
+|---|---|
+| `name` | Which signal this is — the five names in the table below. |
+| `ok` | Whether the reading cleared its threshold. |
+| `value` | The reading, in the unit below. **Absent when the signal could not be read** — a probe reports no number it did not measure. |
+| `threshold` | The number `value` was compared against, after any override. |
+| `configSource` | Where that threshold came from: `default:…`, `env:<VAR>`, `derived:…`, `explicit:argument`, `on-chain:…`, or `unmeasured`. |
+| `alert` | The message the probe contributes to `alerts` when it fails; absent when it passes. |
+| `unhealthySince` | On a failing probe: when this run of failures began, from the probe history. |
+| `alertCount` | On a failing probe: how many runs this streak holds. The alert webhook is delivered when it is 1, so a signal that stays broken is not re-notified every tick. |
+
+The five signals, each with the unit its `value` is in, the threshold it uses when nothing overrides it, and the variable that overrides it:
+
+| Probe | `value` is | Default threshold | Fails when | Override |
+|---|---|---|---|---|
+| `sponsor_balance` | XLM the account that pays ledger fees holds | 10 | below it | `PROBE_MIN_SPONSOR_BALANCE_XLM` |
+| `indexer_lag` | ledgers between the RPC's latest ledger and the slowest source's cursor | the smaller of 11394 (~15.8 h at the measured 5 s/ledger: twice the worst sync gap `studio-cron` actually delivers) and 50% of RPC retention — so 8640 (~12 h) on the ~24 h window the backfill default assumes | at or above it | `PROBE_MAX_INDEXER_LAG_LEDGERS` (ledgers); `PROBE_MAX_INDEXER_LAG_SECONDS` adds a separate wall-clock ceiling and is checked only when set |
+| `pending_certificates` | receipts with no `batch_id` yet | the larger of 500 and 2 × `ANCHOR_MAX_BATCH_SIZE` (default batch 100, so 500) | above it | `PROBE_MAX_PENDING_CERTIFICATES` |
+| `verifier_error_rate` | fraction of the verifier's verdict requests that errored since it started (0–1) | 0.05 | above it; a verifier that has served zero requests passes at 0 rather than dividing by zero | `PROBE_MAX_VERIFIER_ERROR_RATE` |
+| `anchor_verification` | 1 when the last sampled post-anchor check passed, 0 when one failed | 1 (the on-chain `ReceiptAnchor.verify_receipt` verdict) | a failure is on record | none — the threshold is the chain's answer, not a tunable |
+
+`metrics` reports the raw readings those thresholds were applied to: `sponsorBalanceXlm`, `indexerLagLedgers`, `rpcRetentionLedgers`, `indexerLagSeconds`, `pendingCertificatesCount`, `verifierTotalRequests`, `verifierErrorRequests`. A signal whose source could not be read contributes no key at all, so `metrics` can be shorter than the probe list.
+
+**The 503 rule: a probe that cannot be measured is an alert, never a pass.** Every signal comes from its own source — the RPC's `getHealth` for lag and retention, `count(*) FROM receipts WHERE batch_id IS NULL` for the backlog, the sponsor account's own ledger entry for its balance, `GET <VERIFIER_URL>/health` for the verifier's counters, and the anchorer's post-anchor `ReceiptAnchor.verify_receipt` call for the sampled check. When one of those is unreachable, `evaluateSystemHealth` does not drop the signal and answer 200 with what it did get; it adds a probe with `ok: false`, `configSource: "unmeasured"`, no `value`, and an alert that names the reason it failed (`CRITICAL: verifier_error_rate could not be measured (VERIFIER_URL is not set); its threshold was not checked.`), which makes the whole report unhealthy and the response 503. A deployment that cannot be configured at all — where nothing at all could be measured — answers 503 with `probes: []` and one CRITICAL alert rather than an empty all-clear. `anchor_verification` is the exception worth knowing: it is only listed when a post-anchor failure has actually been recorded, so a healthy deployment reports four probes, not five.
 
 ## 📊 Testnet pacts
 
