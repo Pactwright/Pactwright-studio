@@ -164,7 +164,8 @@ export interface BackfillResult {
   fromLedger: number;
   toLedger: number;
   indexed: number;
-  skipped: number;
+  /** Held in `deferred_events` because their pact row is not written yet; replayed by later passes. */
+  deferred: number;
 }
 
 export interface BackfillOptions {
@@ -185,12 +186,12 @@ export async function backfillSource(
   batchSize = 10_000,
 ): Promise<BackfillResult> {
   if (toLedger <= fromLedger) {
-    return { source: source.name, fromLedger, toLedger, indexed: 0, skipped: 0 };
+    return { source: source.name, fromLedger, toLedger, indexed: 0, deferred: 0 };
   }
 
   const decode = source.name === "pact" ? decodePactEvent : decodeRefundVaultEvent;
   let totalIndexed = 0;
-  let totalSkipped = 0;
+  let totalDeferred = 0;
   let currentFrom = fromLedger;
 
   while (currentFrom < toLedger) {
@@ -203,9 +204,9 @@ export async function backfillSource(
 
     const decoded = events.map(decode).filter((e): e is DecodedEvent => e !== null);
     if (decoded.length > 0) {
-      const { indexed, skipped } = await persistEvents(decoded);
+      const { indexed, deferred } = await persistEvents(decoded);
       totalIndexed += indexed;
-      totalSkipped += skipped;
+      totalDeferred += deferred;
     }
 
     // Advance only as far as the source proved it scanned.
@@ -229,13 +230,16 @@ export async function backfillSource(
     fromLedger,
     toLedger,
     indexed: totalIndexed,
-    skipped: totalSkipped,
+    deferred: totalDeferred,
   };
 }
 
 /**
  * Scans all sources and backfills any whose cursor is behind `targetLedger`
  * (defaults to RPC's oldest ledger).
+ *
+ * Events whose pact rows live further back than the range being scanned are held in
+ * `deferred_events`; `syncWithHistory` replays them once the `pact` source has caught up.
  */
 export async function backfill(
   options: BackfillOptions & { config?: ChainConfig; targetLedger?: number } = {},
@@ -261,12 +265,15 @@ export async function backfill(
 /**
  * Resumes indexing cleanly when outside retention: backfills historical gaps from
  * the HistorySource, then calls RPC `sync` to pick up real-time events.
+ *
+ * `sync` runs the deferred-event replay, which is what writes the events a backfill held because
+ * their pact was outside the range that was readable (#51).
  */
 export async function syncWithHistory(
   options: BackfillOptions & { config?: ChainConfig } = {},
 ): Promise<{ backfillResults: BackfillResult[]; syncResults: SyncResult[] }> {
   const config = options.config ?? chainConfig();
   const backfillResults = await backfill(options);
-  const syncResults = await sync(config);
-  return { backfillResults, syncResults };
+  const report = await sync(config);
+  return { backfillResults, syncResults: report.sources };
 }

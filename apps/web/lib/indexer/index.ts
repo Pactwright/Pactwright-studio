@@ -21,13 +21,17 @@ export function stroopsToDecimal(stroops: string | bigint): string {
 
 export interface PersistResult {
   indexed: number;
-  /** Events for pacts Studio has never seen (e.g. M0 refunds before the facilitator reports the pact). */
-  skipped: number;
+  /**
+   * Events for pacts Studio has not written yet — a refund whose `opened` event is still ahead of the
+   * `pact` source's cursor, or an M0 pact the facilitator has not reported. Retained in
+   * `deferred_events` and replayed on later passes, never dropped (#51).
+   */
+  deferred: number;
 }
 
 /** Writes decoded events. Re-running over the same events changes nothing. */
 export async function persistEvents(events: DecodedEvent[]): Promise<PersistResult> {
-  const result: PersistResult = { indexed: 0, skipped: 0 };
+  const result: PersistResult = { indexed: 0, deferred: 0 };
   if (events.length === 0) return result;
   const client = await db().connect();
   try {
@@ -36,8 +40,8 @@ export async function persistEvents(events: DecodedEvent[]): Promise<PersistResu
       try {
         const written = await persistOne(client, ev);
         await client.query("COMMIT");
-        if (written) result.indexed++;
-        else result.skipped++;
+        if (written === "written") result.indexed++;
+        else result.deferred++;
       } catch (err) {
         await client.query("ROLLBACK");
         throw err;
@@ -49,7 +53,19 @@ export async function persistEvents(events: DecodedEvent[]): Promise<PersistResu
   return result;
 }
 
-async function persistOne(client: PoolClient, ev: DecodedEvent): Promise<boolean> {
+type PersistOutcome = "written" | "deferred";
+
+/** Keeps an event whose pact row does not exist yet, so a later pass can write it. */
+async function deferEvent(client: PoolClient, ev: DecodedEvent): Promise<void> {
+  await client.query(
+    `INSERT INTO deferred_events (source, pact_id, stage, tx_hash, ledger, event)
+     VALUES ($1, $2, $3, $4, $5, $6)
+     ON CONFLICT (tx_hash, stage, pact_id) DO NOTHING`,
+    [ev.source, ev.pactId, ev.stage, ev.txHash, ev.ledger, JSON.stringify(ev)],
+  );
+}
+
+async function persistOne(client: PoolClient, ev: DecodedEvent): Promise<PersistOutcome> {
   if (ev.stage === "opened") {
     await client.query(
       `INSERT INTO pacts (pact_id, mode, buyer, seller, resource_url, cap, condition_hash, condition, metered,
@@ -60,7 +76,10 @@ async function persistOne(client: PoolClient, ev: DecodedEvent): Promise<boolean
     );
   } else {
     const known = await client.query("SELECT 1 FROM pacts WHERE pact_id = $1", [ev.pactId]);
-    if (known.rowCount === 0) return false;
+    if (known.rowCount === 0) {
+      await deferEvent(client, ev);
+      return "deferred";
+    }
   }
 
   const inserted = await client.query(
@@ -68,7 +87,7 @@ async function persistOne(client: PoolClient, ev: DecodedEvent): Promise<boolean
      ON CONFLICT (tx_hash, stage, pact_id) DO NOTHING`,
     [ev.pactId, ev.stage, ev.txHash, ev.ledger, JSON.stringify(ev.data)],
   );
-  if (inserted.rowCount === 0) return true; // already indexed
+  if (inserted.rowCount === 0) return "written"; // already indexed
 
   if (ev.stage === "verdict") {
     await client.query(
@@ -122,7 +141,7 @@ async function persistOne(client: PoolClient, ev: DecodedEvent): Promise<boolean
       [computeReceiptLeaf(leafInput), ev.pactId, transition, leafInput.toSeller, leafInput.toBuyer, leafInput.envelopeHash, ev.ledger],
     );
   }
-  return true;
+  return "written";
 }
 
 function terminalTransition(ev: DecodedEvent): Transition | null {
@@ -136,6 +155,57 @@ function terminalTransition(ev: DecodedEvent): Transition | null {
       return "refunded";
     default:
       return null;
+  }
+}
+
+/**
+ * Events held back by a missing pact row, oldest ledger first. Bounded so a backlog cannot turn one
+ * sync pass into an unbounded write loop; whatever is left is replayed by the next pass.
+ */
+const DEFERRED_REPLAY_BATCH = 500;
+
+export interface ReplayResult {
+  replayed: number;
+  remaining: number;
+}
+
+/**
+ * Retries the events `deferred_events` is holding, and forgets the ones whose pact has arrived.
+ *
+ * An event whose pact never arrives stays here, counted, rather than pinning a source's cursor — which
+ * is why retention is a table and not a clamp.
+ */
+export async function replayDeferred(limit = DEFERRED_REPLAY_BATCH): Promise<ReplayResult> {
+  const client = await db().connect();
+  let replayed = 0;
+  try {
+    const held = await client.query<{ id: string; event: DecodedEvent }>(
+      "SELECT id, event FROM deferred_events ORDER BY ledger, id LIMIT $1",
+      [limit],
+    );
+    for (const row of held.rows) {
+      await client.query("BEGIN");
+      try {
+        const outcome = await persistOne(client, row.event);
+        if (outcome === "written") {
+          await client.query("DELETE FROM deferred_events WHERE id = $1", [row.id]);
+          replayed++;
+        } else {
+          await client.query(
+            "UPDATE deferred_events SET attempts = attempts + 1, last_attempt_at = now() WHERE id = $1",
+            [row.id],
+          );
+        }
+        await client.query("COMMIT");
+      } catch (err) {
+        await client.query("ROLLBACK");
+        throw err;
+      }
+    }
+    const count = await client.query<{ n: string }>("SELECT count(*) AS n FROM deferred_events");
+    return { replayed, remaining: Number(count.rows[0]?.n ?? 0) };
+  } finally {
+    client.release();
   }
 }
 
@@ -154,11 +224,20 @@ export interface SyncResult {
   fromLedger: number;
   toLedger: number;
   indexed: number;
-  skipped: number;
+  deferred: number;
+}
+
+/** One pass over every source, plus what it left behind and what a replay recovered. */
+export interface SyncReport {
+  sources: SyncResult[];
+  /** Deferred events written by this pass's replay. */
+  replayed: number;
+  /** Deferred events still waiting after the replay. */
+  deferred: number;
 }
 
 /** One indexing pass over every source, from its cursor to the RPC's latest ledger. */
-export async function sync(config: ChainConfig = chainConfig()): Promise<SyncResult[]> {
+export async function sync(config: ChainConfig = chainConfig()): Promise<SyncReport> {
   const health = await server(config).getHealth();
   const results: SyncResult[] = [];
   for (const source of sources(config)) {
@@ -172,5 +251,8 @@ export async function sync(config: ChainConfig = chainConfig()): Promise<SyncRes
     await advance(source.name, page.throughLedger);
     results.push({ source: source.name, fromLedger, toLedger: page.throughLedger, ...persisted });
   }
-  return results;
+  // `sources()` indexes `pact` first, so an event whose pact opened in this pass is already written; the
+  // replay below is for the ones whose pact arrives on a later pass, or from another source (#51).
+  const replay = await replayDeferred();
+  return { sources: results, replayed: replay.replayed, deferred: replay.remaining };
 }
