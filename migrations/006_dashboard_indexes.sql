@@ -1,0 +1,54 @@
+-- Indexes for the queries behind the merchant and principal dashboards. ROADMAP P7-10, P7-11, studio #94.
+--
+-- Each of these changed the plan of a query that `lib/merchant.ts`, `lib/principal.ts` or the
+-- `GET /api/pacts` page actually issues. Measured on Postgres 16.15 with `explain (analyze, buffers,
+-- costs off)` at 500 sellers / 2,500 routes / 10,000 agents / 30,000 budgets / 60,000 pacts, in two
+-- databases built the same way from these migration files — one without this file, one with it — so the
+-- "before" column is what a fresh deploy of the previous schema does today. Execution time, before -> after:
+--
+--   budgets_agent             budgets of one principal's agents  25.630 -> 0.423 ms  (30,000-row seq scan
+--                                                                                 -> bitmap index scan; the
+--                                                                                 `agents_principal_created`
+--                                                                                 index below is what takes
+--                                                                                 the 0.56 ms seq scan out
+--                                                                                 of the InitPlan)
+--   pacts_recent              first page of `GET /api/pacts`      7.366 -> 0.016 ms  (parallel seq scan of
+--                                                                                 60,000 rows -> index scan
+--                                                                                 that stops at the 26 read)
+--   pacts_recent              ...same page filtered by state      7.862 -> 0.072 ms
+--   agents_principal_created  agents of one principal             0.639 -> 0.040 ms  (10,000-row seq scan
+--                                                                                 -> 50 rows)
+--   pacts_buyer_state         live pacts of one principal         1.425 -> 0.617 ms  (heap blocks 300 -> 129:
+--                                                                                 `pacts_buyer` fetched every
+--                                                                                 pact of those agents and
+--                                                                                 discarded 171 of 300 in the
+--                                                                                 heap for the state filter,
+--                                                                                 a share that grows with
+--                                                                                 history rather than with
+--                                                                                 this snapshot)
+--
+-- Measured and deliberately not indexed, so the next reader does not add these on instinct:
+--
+--   * `sellers ORDER BY created_at` — 0.144 -> 0.143 ms. The planner keeps the seq scan plus quicksort of
+--     500 rows with `create index on sellers (created_at)` present; forcing the index path costs 0.093 ms,
+--     which is the small margin the cost model is declining to pay in insert and vacuum cost for.
+--   * `routes WHERE seller = $1` — already a bitmap scan on the `routes_seller_resource_url_key` unique
+--     constraint (0.054 -> 0.038 ms: noise, same plan).
+--   * `pacts WHERE seller = $1`, and that page sorted by time — already served by `pacts_seller_state`
+--     (0.265 -> 0.252 ms and 0.116 -> 0.099 ms).
+--   * `SELECT DISTINCT principal FROM agents ORDER BY principal ASC` — 1.859 -> 2.131 ms. The planner
+--     still reads all 10,000 rows and HashAggregates them even with `agents_principal_created` available,
+--     so a second index led by `principal` would only slow agent inserts.
+--   * `pacts (state, created_at desc, pact_id desc)` for the state-filtered page — with that candidate
+--     created, the planner still chooses `pacts_recent` (0.072 -> 0.066 ms, same node): `state` has seven
+--     values and an ordered scan stops at 26 rows anyway.
+--   * Nothing can remove the sort in `WHERE buyer = ANY($1) ... ORDER BY created_at DESC`: a btree cannot
+--     return rows for an array of buyers in `created_at` order. It sorts 129 rows.
+--
+-- Plain `create index`, not `create index concurrently`: `migrations/migrate.mjs` runs each file inside a
+-- `BEGIN`/`COMMIT`, and CONCURRENTLY is refused in a transaction block.
+
+create index agents_principal_created on agents (principal, created_at);
+create index budgets_agent on budgets (agent);
+create index pacts_buyer_state on pacts (buyer, state);
+create index pacts_recent on pacts (created_at desc, pact_id desc);
