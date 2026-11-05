@@ -55,6 +55,10 @@ export default async function Home() {
 
         <section aria-labelledby="recent-title" className="doc-section">
           <h2 id="recent-title">Recent pacts</h2>
+          <p className="prose">
+            The eight newest rows.{" "}
+            <a href="/pacts">Browse the whole ledger</a>, filtered by state or by seller.
+          </p>
           {recent === null ? (
             <p className="empty-note">The pact ledger can&apos;t be read right now. Try again in a minute.</p>
           ) : recent.length === 0 ? (
