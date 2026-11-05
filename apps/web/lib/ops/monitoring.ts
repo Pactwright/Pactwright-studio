@@ -10,6 +10,38 @@
 import { getAnchorVerificationRecord } from "@/lib/anchorer";
 import { DEFAULT_RPC_RETENTION } from "@/lib/indexer/backfill";
 
+/**
+ * Testnet closes a ledger every 5 seconds -- measured 2026-11-05 against `getHealth`: ledger
+ * 5570784 -> 5570799 in 75 s, with `ledgerRetentionWindow` 120960 (7 days at the same rate).
+ * Used to turn a lag in ledgers into hours, which is the unit the alert is worth reading in.
+ */
+export const SECONDS_PER_LEDGER = 5;
+
+/**
+ * Worst gap between `studio-cron` runs that were actually delivered: 7.91 h, measured 2026-11-05 over
+ * the 56 `schedule` runs of the previous 6.74 days (median 3.02 h, p90 5.67 h, 8.3 runs a day against
+ * the 312 a day the two cron entries ask for -- 2.66%). The workflow wants a sync every 5 minutes and
+ * GitHub delivers the ticks late -- see the header of `.github/workflows/studio-cron.yml` for the
+ * evidence, including the control that shows it is not this workflow's own configuration.
+ */
+export const MEASURED_MAX_SYNC_GAP_SECONDS = 28483;
+
+/**
+ * An indexer's lag is how long ago it last ran, so the warning has to clear the gap the scheduler
+ * really produces or it fires on an ordinary late tick -- and nothing else. The old default of 50% of
+ * retention was 60480 ledgers, about 3.5 days: on 2026-11-05 `/api/ops/health` answered `healthy: true`
+ * at 5673 ledgers (~7.9 h) behind and again at 12 ledgers, the sawtooth this cadence produces, with
+ * nothing in the report to tell the two apart.
+ *
+ * Twice the worst measured gap alerts about 15.8 h after syncing stops: close enough to be worth acting
+ * on, loose enough to tolerate one more late tick. The retention half stays as the ceiling, because
+ * waiting longer than half the retention window risks the events going away before anyone is told --
+ * which is why a ~24 h window still warns at 8640 ledgers, exactly as it did before.
+ */
+export const MAX_LAG_LEDGERS_FROM_CADENCE = Math.ceil(
+  (2 * MEASURED_MAX_SYNC_GAP_SECONDS) / SECONDS_PER_LEDGER
+);
+
 export type SignalName =
   | "sponsor_balance"
   | "indexer_lag"
@@ -51,6 +83,11 @@ export interface SystemHealthReport {
   alerts: string[];
 }
 
+/** Ledgers as hours to one decimal, at the measured 5 s/ledger: the unit a lag alert reads in. */
+function hours(ledgers: number): number {
+  return Math.round((ledgers * SECONDS_PER_LEDGER * 10) / 3600) / 10;
+}
+
 export function probeSponsorBalance(balanceXlm: number, minThreshold?: number): ProbeResult {
   const envVal = process.env.PROBE_MIN_SPONSOR_BALANCE_XLM;
   const threshold = minThreshold ?? (envVal ? parseFloat(envVal) : 10);
@@ -82,12 +119,16 @@ export function probeIndexerLag(
   const envLedgers = process.env.PROBE_MAX_INDEXER_LAG_LEDGERS;
   const envSeconds = process.env.PROBE_MAX_INDEXER_LAG_SECONDS;
 
-  const thresholdLedgers = envLedgers ? parseInt(envLedgers, 10) : Math.floor(retentionLedgers * 0.5);
+  const retentionHalf = Math.floor(retentionLedgers * 0.5);
+  const cadenceBinds = MAX_LAG_LEDGERS_FROM_CADENCE < retentionHalf;
+  const thresholdLedgers = envLedgers
+    ? parseInt(envLedgers, 10)
+    : Math.min(retentionHalf, MAX_LAG_LEDGERS_FROM_CADENCE);
   const thresholdSeconds = maxLagSeconds ?? (envSeconds ? parseInt(envSeconds, 10) : undefined);
 
-  const retentionOk = lagLedgers < thresholdLedgers;
+  const ledgerOk = lagLedgers < thresholdLedgers;
   const secondsOk = thresholdSeconds === undefined || (lagSeconds ?? lagLedgers * 5) < thresholdSeconds;
-  const ok = retentionOk && secondsOk;
+  const ok = ledgerOk && secondsOk;
 
   const configSource = envSeconds
     ? `env:PROBE_MAX_INDEXER_LAG_SECONDS(${thresholdSeconds}s)`
@@ -95,14 +136,18 @@ export function probeIndexerLag(
       ? `env:PROBE_MAX_INDEXER_LAG_LEDGERS(${thresholdLedgers})`
       : maxLagSeconds !== undefined
         ? `explicit:maxLagSeconds(${maxLagSeconds}s)`
-        : `default:50%retention(${thresholdLedgers})`;
+        : cadenceBinds
+          ? `default:cadence(${thresholdLedgers})`
+          : `default:50%retention(${thresholdLedgers})`;
 
   let alert: string | undefined;
   if (!secondsOk) {
     const s = lagSeconds ?? lagLedgers * 5;
     alert = `WARNING: Indexer wall-clock lag (${s}s >= threshold ${thresholdSeconds}s).`;
-  } else if (!retentionOk) {
-    alert = `WARNING: Indexer lag has exceeded 50% of retention (${lagLedgers} ledgers >= threshold ${thresholdLedgers}).`;
+  } else if (!ledgerOk) {
+    alert = cadenceBinds
+      ? `WARNING: Indexer lag (${lagLedgers} ledgers, ~${hours(lagLedgers)}h) is past the cadence-derived threshold ${thresholdLedgers} (~${hours(thresholdLedgers)}h).`
+      : `WARNING: Indexer lag has exceeded 50% of retention (${lagLedgers} ledgers >= threshold ${thresholdLedgers}).`;
   }
 
   return {

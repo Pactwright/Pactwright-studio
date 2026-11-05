@@ -1,35 +1,47 @@
 name: studio-cron
-# Drives the deployed Studio (ROADMAP S-02, S-04, S-10): indexer sync every 5 minutes, anchoring
-# hourly. Vercel's Hobby plan only runs crons daily, so GitHub Actions calls the protected routes.
+# Drives the deployed Studio (ROADMAP S-02, S-04, S-10): indexer sync, and anchoring once an hour.
+# Vercel's Hobby plan only runs crons daily, so GitHub Actions calls the protected routes.
 # Needs repository secrets STUDIO_URL and CRON_SECRET (the same value as on the Vercel project).
+#
+# The cadences asked for below are not the cadences that arrive, and this file is not why. Measured
+# over the 56 `schedule` runs in the 6.74 days to 2026-11-05T11:37Z:
+#   * 8.3 runs/day, where `*/5 * * * *` plus one hourly tick asks for 312 -- 2.66% of them;
+#   * gaps between runs: median 3.02h, p90 5.67h, worst 7.91h;
+#   * 50 of those 55 runs were not created on a scheduled minute, yet each started within a second of
+#     being created -- the trigger reached Actions late, it did not queue behind a busy runner;
+#   * no run was cancelled or skipped, and every one succeeded, in p50 18s / worst 79s.
+# A control rules out this file: `synthetic-keepalive.yml` in the same repo asks for `*/10 * * * *` and
+# gets 4.1 runs/day, with its own group and `cancel-in-progress: true`. Same ~2.7% of the ask, so the
+# shortfall is how GitHub delivers this account's scheduled ticks, not anything configured here. The
+# indexing
+# that actually happens is hourly-ish. `probeIndexerLag` (apps/web/lib/ops/monitoring.ts) sets its
+# alert from the worst gap measured here rather than from the 5 minutes this file asks for.
 on:
   schedule:
     - cron: "*/5 * * * *" # sync
-    - cron: "7 * * * *" # anchor (and a sync first)
-  workflow_dispatch:
-    inputs:
-      job:
-        description: "Job to trigger"
-        required: true
-        default: sync
-        type: choice
-        options: [sync, anchor, both]
+    - cron: "7 * * * *" # anchor, after a sync so it anchors receipts the sync just read
 
 permissions:
   contents: read
 
-concurrency:
-  group: studio-cron
-  cancel-in-progress: false
-
 jobs:
-  cron:
+  # Sync and anchor hold separate locks. They shared one `concurrency.group` until now, which meant a
+  # slow anchor run could sit on the lock while sync ticks went past it -- not the cause of the
+  # shortfall above (nothing was ever cancelled), but it made anchoring able to starve indexing, and
+  # the shared 10-minute ceiling let one hung curl keep that lock for ~9 minutes.
+  sync:
+    # Every scheduled tick syncs; only a manual "anchor" dispatch skips this.
+    if: github.event_name != 'workflow_dispatch' || github.event.inputs.job != 'anchor'
+    concurrency:
+      group: studio-cron-sync
+      cancel-in-progress: false
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # Kept under the 5-minute tick: a hung request releases the lock before the next tick arrives
+    # instead of stacking behind it. Worst case for the step below is 3 x 60s + 2 x 15s = 3.5 minutes.
+    timeout-minutes: 4
     env:
       STUDIO_URL: ${{ secrets.STUDIO_URL }}
       CRON_SECRET: ${{ secrets.CRON_SECRET }}
-      JOB: ${{ github.event.inputs.job || (github.event.schedule == '7 * * * *' && 'both') || 'sync' }}
     steps:
       # A silent skip would leave the indexer stopped with a green check; fail instead.
       - name: Check configuration
@@ -39,11 +51,29 @@ jobs:
 
       # Free-tier services sleep; the first request wakes them, so allow a slow start.
       - name: Sync
-        if: env.JOB == 'sync' || env.JOB == 'both'
         run: |
-          curl -fsS --retry 3 --retry-delay 20 --max-time 120 -H "Authorization: Bearer $CRON_SECRET" "$STUDIO_URL/api/sync"
+          curl -fsS --retry 2 --retry-delay 15 --max-time 60 -H "Authorization: Bearer $CRON_SECRET" "$STUDIO_URL/api/sync"
+
+  anchor:
+    needs: sync
+    # `needs` keeps the old sync-then-anchor order on the hourly tick. `always()` is what lets the
+    # batch still drain when the sync before it failed -- anchoring receipts already in the database
+    # does not depend on reading new ones.
+    if: always() && (github.event.schedule == '7 * * * *' || (github.event_name == 'workflow_dispatch' && github.event.inputs.job != 'sync'))
+    concurrency:
+      group: studio-cron-anchor
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    env:
+      STUDIO_URL: ${{ secrets.STUDIO_URL }}
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+    steps:
+      - name: Check configuration
+        run: |
+          test -n "$STUDIO_URL" || { echo "::error::STUDIO_URL secret is not set"; exit 1; }
+          test -n "$CRON_SECRET" || { echo "::error::CRON_SECRET secret is not set"; exit 1; }
 
       - name: Anchor
-        if: env.JOB == 'anchor' || env.JOB == 'both'
         run: |
-          curl -fsS --retry 3 --retry-delay 20 --max-time 120 -H "Authorization: Bearer $CRON_SECRET" "$STUDIO_URL/api/anchor"
+          curl -fsS --retry 2 --retry-delay 20 --max-time 90 -H "Authorization: Bearer $CRON_SECRET" "$STUDIO_URL/api/anchor"

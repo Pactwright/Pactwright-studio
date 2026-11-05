@@ -35,9 +35,9 @@
 
 > [!IMPORTANT]
 > **Live on testnet: [pactwright-studio.vercel.app](https://pactwright-studio.vercel.app).** It indexes the
-> `pact` contract every 5 minutes and anchors receipts on the deployed `ReceiptAnchor` every hour;
-> every proof verifies on-chain with `verify_receipt`. Testnet only, not audited. The seller and
-> agent-budget pages still show sample data. [What works today](#what-works-today) has the details.
+> `pact` contract, and anchors receipts on the deployed `ReceiptAnchor`. Syncs land hours apart, not every
+> 5 minutes ([Deploy](#deploy)); every proof verifies on-chain with `verify_receipt`. Testnet only, not
+> audited. The seller and agent-budget pages still show sample data. [What works today](#what-works-today) has the details.
 
 ## 📖 Overview
 
@@ -98,7 +98,7 @@ How a receipt becomes provable, the trust model, and the anchoring and dashboard
 | Merchant dashboard, principal view | 🧪 Seeded data | No sign-in yet |
 | Ops health probes | 🚧 Partial | Indexer lag, RPC retention and the anchoring backlog are measured; sponsor balance and verifier error rate aren't yet |
 | Pollar Studio storefront template | ✅ Template | `templates/pollar-studio`, built with the public Pollar SDK only |
-| Hosted deployment | ✅ Testnet | [pactwright-studio.vercel.app](https://pactwright-studio.vercel.app) on Vercel. The [`studio-cron`](.github/workflows/studio-cron.yml) workflow syncs every 5 minutes and anchors hourly |
+| Hosted deployment | ✅ Testnet | [pactwright-studio.vercel.app](https://pactwright-studio.vercel.app) on Vercel. The [`studio-cron`](.github/workflows/studio-cron.yml) workflow drives syncs and hourly anchoring; the syncs that actually arrive are measured at 8.3 a day, not every 5 minutes ([Deploy](#deploy)) |
 
 ## ⚙️ Supported Versions & Compatibility
 
@@ -194,14 +194,14 @@ pnpm --filter web e2e         # 3 Playwright end-to-end tests
 
 ### Deploy
 
-Testnet is live at [pactwright-studio.vercel.app](https://pactwright-studio.vercel.app), hosted on Vercel (project `pactwright-studio`, root directory `apps/web`). [`apps/web/vercel.json`](apps/web/vercel.json) runs the migrations before every build. Vercel's Hobby plan only runs crons daily, so the [`studio-cron`](.github/workflows/studio-cron.yml) GitHub Actions workflow calls `/api/sync` every 5 minutes and `/api/anchor` every hour. It needs the repository secrets `STUDIO_URL` and `CRON_SECRET` (the same value as on Vercel), and fails loudly without them.
+Testnet is live at [pactwright-studio.vercel.app](https://pactwright-studio.vercel.app), hosted on Vercel (project `pactwright-studio`, root directory `apps/web`). [`apps/web/vercel.json`](apps/web/vercel.json) runs the migrations before every build. Vercel's Hobby plan only runs crons daily, so the [`studio-cron`](.github/workflows/studio-cron.yml) GitHub Actions workflow asks for `/api/sync` every 5 minutes and `/api/anchor` every hour. What arrives is not what it asks for, and the workflow is not the reason: measured 2026-11-05 over the 56 `schedule` runs of the previous 6.74 days, **8.3 runs a day** against the 312/day those two cron entries imply (2.66% of them), with gaps of median 3.02 h, p90 5.67 h and a worst 7.91 h. 51 of the 56 were created off a scheduled minute yet started within a second of being created, so the ticks reach Actions late rather than queueing behind a busy runner; none was cancelled, none failed, and each took 18 s at the median, 79 s at worst. Sync and anchor now hold separate concurrency locks, so a slow anchor cannot sit on the lock a sync tick needs -- the other scheduled workflow in this repo, `synthetic-keepalive.yml` asking for `*/10 * * * *`, arrives at 4.1 runs/day with a different lock and `cancel-in-progress: true`, which is what says the shortfall is the account's schedule delivery and not either file's configuration, and the indexer-lag alert in [`apps/web/lib/ops/monitoring.ts`](apps/web/lib/ops/monitoring.ts) is derived from the gap that actually runs rather than the 5 minutes the file asks for. It needs the repository secrets `STUDIO_URL` and `CRON_SECRET` (the same value as on Vercel), and fails loudly without them.
 
 1. `vercel link` from the repository root, choosing `apps/web` as the root directory, then `vercel deploy --prod`.
 2. Set the Production environment variables (`vercel env add <NAME> production`): `DATABASE_URL`, `ANCHORER_SECRET` (the `ReceiptAnchor` admin key, testnet only), `RECEIPT_ANCHOR_ID`, `PACT_CONTRACT_ID`, `INDEX_START_LEDGER`, `REFUND_VAULT_IDS`, `STELLAR_NETWORK`, `NEXT_PUBLIC_STELLAR_NETWORK`, `STELLAR_NETWORK_PASSPHRASE`, `STELLAR_RPC_URL`, `VERIFIER_URL`, `FACILITATOR_URL`, and `CRON_SECRET` (also set as a repository secret for the `studio-cron` workflow).
 3. Check `/api/ops/health`: it reports all four XC-03 signals — sponsor balance, indexer lag (must stay
-   under 50% of RPC retention), pending certificates and the verifier error rate. A signal it cannot
-   measure is listed as an alert, never as a pass, so an unreadable verifier or a missing `VERIFIER_URL`
-   shows up as a 503 rather than as an all-clear.
+   under 11394 ledgers, about 15.8 h: twice the worst measured sync gap, capped at 50% of RPC retention),
+   pending certificates and the verifier error rate. A signal it cannot measure is listed as an alert,
+   never as a pass, so an unreadable verifier or a missing `VERIFIER_URL` shows up as a 503, not an all-clear.
 
 Scheduling lives in one place: `.github/workflows/studio-cron.yml` calls `/api/sync` and `/api/anchor` with the `CRON_SECRET` bearer token. `vercel.json` deliberately has no `crons`, so there is no second, silently-dead set of schedules next to the real ones.
 

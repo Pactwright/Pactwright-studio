@@ -86,7 +86,12 @@ describe("Ops monitoring and alerting (ROADMAP XC-03)", () => {
       pendingReceipts: async () => 3,
     });
     expect(metrics).toEqual({ indexerLagLedgers: 50_000, rpcRetentionLedgers: 120_960, pendingCertificatesCount: 3 });
-    expect(evaluateSystemHealth(metrics).healthy).toBe(true);
+    // 50000 ledgers is ~69h of testnet behind. The old default (50% of retention = 60480 ledgers,
+    // ~3.5 days) called that healthy, which is how the sync cadence shortfall stayed invisible from
+    // /api/ops/health; the cadence-derived threshold (#60) does not.
+    const report = evaluateSystemHealth(metrics);
+    expect(report.healthy).toBe(false);
+    expect(report.alerts.join(" ")).toContain("cadence-derived threshold");
   });
 
   it("counts a never-synced source from INDEX_START_LEDGER, so a stale start alerts", async () => {
