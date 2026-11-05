@@ -66,6 +66,20 @@ create index receipts_pact on receipts (pact_id);
 create index receipts_pending on receipts (batch_id) where batch_id is null;
 
 create table sync_state (
-  source           text primary key,   -- 'pact' | 'facilitator' | 'refund_vault:<id>'
+  -- One row per source the indexer reads. `sources()` (apps/web/lib/indexer/sources.ts) names them:
+  -- 'pact', and 'refund_vault:<contractId>' for each entry in REFUND_VAULT_IDS.
+  --
+  -- 'facilitator' is reserved by ARCHITECTURE.md §7.3 for the source studio#50 asks for, and no pass
+  -- writes it, because there is nothing to read yet. Verified 2026-11-05 against the facilitator code
+  -- studio deploys (Pactwright-Kit/deploy/facilitator) and the live testnet instance: it keeps no pact
+  -- record (a settlement aggregate is keyed by the caller's Idempotency-Key, or sha256 of the buyer's
+  -- payment XDR -- neither of which studio holds), it exposes no route that lists pacts (GET /pacts
+  -- answers 404 route_not_found, and GET /settlements/:key needs the caller's own key), the two store
+  -- methods that could enumerate are called by no route, and it runs with no DATABASE_URL, so its state
+  -- is one instance's memory. That source needs a pact-read route upstream in Accensa and a durable
+  -- store before it can exist here -- an ADR before the code (AGENTS.md §4). Seeding a 'facilitator'
+  -- cursor would have been worse than inert: the first real source would read it as "already indexed
+  -- through this ledger" and skip every event before it.
+  source           text primary key,
   cursor_ledger    integer not null
 );
