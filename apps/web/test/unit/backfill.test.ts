@@ -207,7 +207,7 @@ describe("Indexer backfill & lag alert (ROADMAP S-03)", () => {
   });
 
   describe("End-to-end backfill and resume from RPC", () => {
-    it("starts with cursor outside retention and ends with every event indexed and none skipped", async () => {
+    it("starts with cursor outside retention and ends with every event indexed and none deferred", async () => {
       // 1. Setup: cursor is at 10000, RPC retention window is [50000, 51000].
       // Lag is 41000 > DEFAULT_RPC_RETENTION (17280).
       cursors.set("pact", 10000);
@@ -309,19 +309,19 @@ describe("Indexer backfill & lag alert (ROADMAP S-03)", () => {
       // 5. Run syncWithHistory: backfills the historical gap, then resumes RPC sync
       const { backfillResults, syncResults } = await syncWithHistory({ historySource, config });
 
-      // Verify backfill indexed all 3 historical events and skipped 0
+      // Verify backfill indexed all 3 historical events and deferred none
       expect(backfillResults).toHaveLength(1);
       expect(backfillResults[0].fromLedger).toBe(10000);
       expect(backfillResults[0].toLedger).toBe(50000);
       expect(backfillResults[0].indexed).toBe(3);
-      expect(backfillResults[0].skipped).toBe(0);
+      expect(backfillResults[0].deferred).toBe(0);
 
-      // Verify RPC sync indexed 1 event and skipped 0
+      // Verify RPC sync indexed 1 event and deferred 0
       expect(syncResults).toHaveLength(1);
       expect(syncResults[0].fromLedger).toBe(50000);
       expect(syncResults[0].toLedger).toBe(51000);
       expect(syncResults[0].indexed).toBe(1);
-      expect(syncResults[0].skipped).toBe(0);
+      expect(syncResults[0].deferred).toBe(0);
 
       // Verify final state: both pacts indexed, terminal receipt created, cursor at 51000
       expect(pacts.has(pactIdHex)).toBe(true);

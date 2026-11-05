@@ -84,15 +84,16 @@ How a receipt becomes provable, the trust model, and the anchoring and dashboard
 
 | Piece | Status | Notes |
 |---|---|---|
-| Postgres schema and migrations | ✅ Working | `001_core.sql`, `002_accounts.sql`, `003_receipt_anchor_v020.sql`. Each file is applied once; the runner records what it applied |
+| Postgres schema and migrations | ✅ Working | `001_core.sql` through `005_deferred_events.sql`. Each file is applied once; the runner records what it applied |
 | Indexer: Stellar RPC `getEvents` | ✅ Testnet | `pact` events and RefundVault refunds, one cursor per source, one database transaction per event, idempotent |
+| Out-of-order events | ✅ Working | A refund whose pact isn't indexed yet can't be written (`pact_events.pact_id` references `pacts`), so it is held in `deferred_events` and retried at the end of every pass — never dropped, and never a reason to stall the source's cursor |
 | Receipt leaves | ✅ Working | Byte for byte as the contract's `receipt_leaf`, tested against its vectors. Each receipt keeps its leaf inputs so anyone can recompute it |
 | Anchorer: `anchor_batch` | ✅ Testnet | Real transactions signed by the ReceiptAnchor admin key. Batch 1: 9 receipts, [`be51068e…`](https://stellar.expert/explorer/testnet/tx/be51068eea65b8f47799253ca45bd5e5d9c014d7cae0b873f19150658d8edfb0) |
 | Crash safety | ✅ Working | Each batch is recorded as a plan before it's sent; the next run settles plans against the chain, so a batch is never anchored twice or lost |
 | Certificates | ✅ Testnet | Every anchored proof verifies offline and with ReceiptAnchor's own `verify_receipt` |
 | Lag alerting | ✅ Working | Alert at 50% of RPC retention |
 | Backfill from a history source | ✅ Working | If the cursor falls outside RPC retention, `sync` backfills from an archival RPC (`HISTORY_RPC_URL`) or an HTTP history source; without one it stops with an error rather than skip events |
-| M0 pacts | 🚧 Not yet | M0 pacts aren't opened on-chain, so Studio learns of them from the facilitator (X-*). Until then, their refunds are skipped |
+| M0 pacts | 🚧 Not yet | M0 pacts aren't opened on-chain, so Studio must learn of them from the facilitator — the third source `S-02` names and studio#50 is about adding. Until that source exists their refunds stay in `deferred_events`, counted and retried each pass, so nothing is lost when it arrives |
 | Home page, pact timeline, certificate viewer | ✅ Testnet | Live; Playwright end-to-end tests. Checked at phone, tablet and desktop sizes |
 | Merchant dashboard, principal view | 🧪 Seeded data | No sign-in yet |
 | Ops health probes | 🚧 Partial | Indexer lag, RPC retention and the anchoring backlog are measured; sponsor balance and verifier error rate aren't yet |
