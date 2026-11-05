@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 
 // Mock the db module
 vi.mock("@/lib/db", () => {
@@ -21,11 +21,12 @@ import { server, contractEvents, type ChainConfig, type RawEvent } from "@/lib/c
 import {
   checkLag,
   DEFAULT_RPC_RETENTION,
+  RpcHistorySource,
   backfillSource,
   syncWithHistory,
   type HistorySource,
 } from "../../lib/indexer/backfill";
-import { sync, OutsideRetentionError } from "../../lib/indexer";
+import { sync, SyncFailuresError } from "../../lib/indexer";
 
 const pactIdHex = "3bff7dfd2a2019a5bc35d23c27335f81e8ed756dcc093ed1fb587abd73c9f276";
 const pactIdBytes = Buffer.from(pactIdHex, "hex");
@@ -206,6 +207,65 @@ describe("Indexer backfill & lag alert (ROADMAP S-03)", () => {
     });
   });
 
+  describe("RpcHistorySource", () => {
+    const chainEnv = ["STELLAR_RPC_URL", "STELLAR_NETWORK", "PACT_CONTRACT_ID", "RECEIPT_ANCHOR_ID"];
+
+    beforeEach(() => {
+      process.env.STELLAR_RPC_URL = "https://soroban-testnet.stellar.org";
+      process.env.STELLAR_NETWORK = "testnet";
+      process.env.PACT_CONTRACT_ID = "CPACT";
+      process.env.RECEIPT_ANCHOR_ID = "CANCHOR";
+    });
+    afterEach(() => {
+      for (const key of chainEnv) delete process.env[key];
+    });
+
+    it("reports the ledger it actually read, not the end of the range it asked for", async () => {
+      // #49: a paging read that stopped at 42000 must not let the cursor jump to the requested 60000,
+      // because ledgers 42001-60000 were never read. Asserting against `throughLedger` is what keeps the
+      // cursor honest — `Math.min(toLedger, latestLedger)` would pass this and lose the gap.
+      vi.mocked(contractEvents).mockResolvedValue({
+        events: [rawPact(["pact", "opened"], { pact_id: pactIdBytes }, 41000, "tx-41000")],
+        latestLedger: 60000,
+        oldestLedger: 10000,
+        throughLedger: 42000,
+      });
+
+      const out = await new RpcHistorySource("https://archival.example").fetchEvents("CPACT", 10000, 60000);
+
+      expect(out.scannedThroughLedger).toBe(42000);
+      expect(out.events).toHaveLength(1);
+    });
+
+    it("never claims to have read past the range it was asked for", async () => {
+      vi.mocked(contractEvents).mockResolvedValue({
+        events: [rawPact(["pact", "opened"], { pact_id: pactIdBytes }, 65000, "tx-65000")],
+        latestLedger: 70000,
+        oldestLedger: 10000,
+        throughLedger: 70000,
+      });
+
+      const out = await new RpcHistorySource("https://archival.example").fetchEvents("CPACT", 10000, 60000);
+
+      expect(out.scannedThroughLedger).toBe(60000);
+      // The event outside the requested range is not handed over either — the caller's cursor stays at 60000.
+      expect(out.events).toHaveLength(0);
+    });
+
+    it("refuses a range the archival RPC does not keep", async () => {
+      vi.mocked(contractEvents).mockResolvedValue({
+        events: [],
+        latestLedger: 80000,
+        oldestLedger: 50000,
+        throughLedger: 80000,
+      });
+
+      await expect(new RpcHistorySource("https://archival.example").fetchEvents("CPACT", 10000, 60000)).rejects.toThrow(
+        /only keeps events from ledger 50000; needed 10000/,
+      );
+    });
+  });
+
   describe("End-to-end backfill and resume from RPC", () => {
     it("starts with cursor outside retention and ends with every event indexed and none deferred", async () => {
       // 1. Setup: cursor is at 10000, RPC retention window is [50000, 51000].
@@ -223,8 +283,24 @@ describe("Indexer backfill & lag alert (ROADMAP S-03)", () => {
         getHealth: mockGetHealth,
       } as unknown as ReturnType<typeof server>);
 
-      // 2. Direct sync() fails closed with OutsideRetentionError instead of silently skipping 40,000 ledgers
-      await expect(sync(config)).rejects.toThrow(OutsideRetentionError);
+      // 2. Direct sync() fails closed and names the source, instead of silently skipping 40,000 ledgers.
+      //    #49: the pass reports which source it could not read and leaves its cursor where it is, so a
+      //    stale RefundVault no longer takes the whole indexer down with it.
+      const err = await sync(config).then(
+        () => null,
+        (e: unknown) => e,
+      );
+      expect(err).toBeInstanceOf(SyncFailuresError);
+      expect((err as SyncFailuresError).failures).toEqual([
+        {
+          source: "pact",
+          reason: "outsideRetention",
+          cursor: 10000,
+          oldestLedger: 50000,
+          message: expect.stringContaining("older than the RPC's oldest ledger 50000"),
+        },
+      ]);
+      expect(cursors.get("pact")).toBe(10000);
       expect(pacts.size).toBe(0);
 
       // 3. Prepare historical events that occurred in the gap (10000..50000)

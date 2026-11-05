@@ -2,7 +2,8 @@
  * Indexer backfill from a history source and lag alert against RPC retention. ROADMAP S-03.
  *
  * If the indexer falls behind RPC retention (e.g. during an outage or node catchup),
- * sync stops with OutsideRetentionError to prevent missing events.
+ * sync refuses to move that source's cursor past ledgers the RPC no longer keeps and reports it as an
+ * `outsideRetention` failure, so the gap cannot be marked as read (#49).
  *
  * `backfill` catches up missing ledgers from a history source (e.g. Galexie or a ledger-meta
  * data lake), decodes them through the exact same decoders and `persistEvents`, and only
