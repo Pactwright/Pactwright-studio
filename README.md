@@ -156,7 +156,7 @@ pnpm db:seed                  # loads fixture pacts, receipts and accounts
 pnpm dev                      # http://localhost:3000
 ```
 
-The routes the app serves:
+The routes the app serves, described for programs in [`docs/openapi.yaml`](docs/openapi.yaml):
 
 | Route | Kind | Purpose |
 |---|---|---|
