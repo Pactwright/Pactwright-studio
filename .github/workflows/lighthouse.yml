@@ -27,8 +27,6 @@ jobs:
     env:
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
       LH_VERSION: 13.6.0
-      LH_PREFIX: ${{ runner.temp }}/lighthouse-tool
-      LH_REPORTS: ${{ runner.temp }}/lighthouse-reports
       BASE_URL: http://127.0.0.1:3000
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -48,6 +46,16 @@ jobs:
 
       - name: Production build
         run: pnpm build
+
+      - name: Where this job keeps its tool and its reports
+        run: |
+          # Outside the repository, so nothing installed or measured here can be picked up by a later
+          # pnpm command. RUNNER_TEMP is the runner's own scratch directory, which is also why this
+          # step writes no Actions expression: the `runner` context is not legal in a job-level
+          # `env:` block, and GitHub rejects the whole file, not the step, when it appears there.
+          mkdir -p "$RUNNER_TEMP/lighthouse-reports"
+          echo "LH_REPORTS=$RUNNER_TEMP/lighthouse-reports" >>"$GITHUB_ENV"
+          echo "LH_PREFIX=$RUNNER_TEMP/lighthouse-tool" >>"$GITHUB_ENV"
 
       - name: Start the production server
         run: |

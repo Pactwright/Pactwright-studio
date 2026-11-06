@@ -95,8 +95,9 @@ describe("#89 the budget gate judges what it is given", () => {
   });
 
   it("takes the median of three samples, so one cold run cannot fail the gate", () => {
-    // Measured on a warm server: the first Lighthouse run of a process scored home 76 with one
-    // 3,926 ms unattributable long task, and 99 and 100 on the runs after it.
+    // The numbers come from the reports this gate wrote locally: the first sample of a fresh
+    // `next start` process scored home 76 (1,263 ms total blocking, 1,285 ms max potential FID) and
+    // the two after it scored 99 (145 ms and 100 ms), with the document answered in 10-20 ms.
     const cold = [report({ ...ok(), performance: 76 }), ...passing(2)];
     const { code, out } = evaluate(pages({ home: cold }));
     expect(out).toContain("home | http://127.0.0.1:3000/ | performance | 76, 99, 99 | 99 | 90 | pass");
@@ -252,7 +253,37 @@ describe("#89 the workflow that runs the gate", () => {
       const start = step.indexOf("run: |");
       if (start >= 0) expect(step.slice(start)).not.toMatch(/\$\{\{/);
     }
-    expect(WORKFLOW).toMatch(/LH_REPORTS: \$\{\{ runner\.temp \}\}\/lighthouse-reports/);
+    // The two scratch paths are exported by a step from RUNNER_TEMP rather than written as
+    // expressions, and the artifact upload points at the same directory through `with:`, where the
+    // `runner` context is legal.
+    expect(WORKFLOW).toMatch(/LH_REPORTS=\$RUNNER_TEMP\/lighthouse-reports/);
+    expect(WORKFLOW).toMatch(/LH_PREFIX=\$RUNNER_TEMP\/lighthouse-tool/);
+    expect(WORKFLOW).toMatch(/path: \$\{\{ runner\.temp \}\}\/lighthouse-reports/);
+  });
+
+  /**
+   * A `${{ }}` GitHub cannot evaluate in the place it sits is not a step that fails: it is a file
+   * that does not parse, so no job, no check and no report ever appear. `runner` is one of the
+   * contexts missing from a job-level `env:` block, which is how this job lost 13 minutes to a red
+   * run with zero jobs. Step-level `env:`/`with:` do allow it, so only the outer blocks are read.
+   */
+  it("keeps expressions out of the env blocks GitHub will not parse", () => {
+    const lines = WORKFLOW.split("\n");
+    const outer: string[] = [];
+    for (let i = 0; i < lines.length; i++) {
+      const m = lines[i].match(/^(\s*)env:\s*$/);
+      if (!m || m[1].length > 4) continue;
+      const indent = m[1].length;
+      let j = i + 1;
+      while (j < lines.length) {
+        const lead = lines[j].match(/^(\s*)/)![1].length;
+        if (lines[j].trim() === "" || lead <= indent) break;
+        j++;
+      }
+      outer.push(lines.slice(i + 1, j).join("\n"));
+    }
+    expect(outer.length).toBeGreaterThan(0);
+    for (const block of outer) expect(block).not.toMatch(/\$\{\{/);
   });
 
   it("pins what it downloads", () => {

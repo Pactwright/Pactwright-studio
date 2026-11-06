@@ -9,11 +9,11 @@
  *                     the gate against an artifact without measuring again).
  *
  * The budget is three categories at 90 on mobile, for every page, on the median of the samples.
- * The median is what Lighthouse CI judges, and a single sample is not usable here: a cold
- * `next start` answers its first request while V8 and the page's own modules are still warming,
- * which on `/` measured performance 70 (3,920 ms total blocking, one 3,926 ms "Unattributable"
- * long task) and 99 and 100 on the two runs after it. So each page is requested once before it is
- * measured, and the middle of three runs is what has to clear 90.
+ * A single sample is not usable here. On `/`, the first sample of a `next start` process measured
+ * performance 76 with 1,263 ms of total blocking time and a 1,285 ms max potential FID, while the
+ * two after it measured 99 with 145 and 100 ms, and the server answered the document in 10 to 20 ms
+ * in all three: the cost is the page executing cold, not the request being slow. So each page is
+ * fetched once before it is measured, and even then the middle of three runs is what has to clear 90.
  */
 import { spawnSync } from "node:child_process";
 import { get } from "node:http";
