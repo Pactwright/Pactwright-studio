@@ -1,0 +1,106 @@
+name: lighthouse
+# ROADMAP P7-20 (studio#89): nothing stops a change from making Studio slow. This runs Lighthouse on
+# a production build of the public pages, against a seeded database, and fails the pull request if
+# performance, accessibility or best practices falls below 90 on mobile for any page.
+# What is judged, and why the median of three samples is the statistic, is in scripts/lighthouse-budget.mjs.
+# No `${{ }}` value reaches a shell command in this file: every run step reads an env var instead, so
+# nothing in the event payload can be injected into a command (AGENTS.md §8).
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  budget:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: --health-cmd pg_isready --health-interval 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+      LH_VERSION: 13.6.0
+      BASE_URL: http://127.0.0.1:3000
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: pnpm/action-setup@fe02b34f77f8bc703788d5817da081398fad5dd2 # v4.0.0
+      - uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Migrate and seed
+        run: |
+          pnpm db:migrate
+          pnpm db:seed
+
+      - name: Production build
+        run: pnpm build
+
+      - name: Where this job keeps its tool and its reports
+        run: |
+          # Outside the repository, so nothing installed or measured here can be picked up by a later
+          # pnpm command. RUNNER_TEMP is the runner's own scratch directory, which is also why this
+          # step writes no Actions expression: the `runner` context is not legal in a job-level
+          # `env:` block, and GitHub rejects the whole file, not the step, when it appears there.
+          mkdir -p "$RUNNER_TEMP/lighthouse-reports"
+          echo "LH_REPORTS=$RUNNER_TEMP/lighthouse-reports" >>"$GITHUB_ENV"
+          echo "LH_PREFIX=$RUNNER_TEMP/lighthouse-tool" >>"$GITHUB_ENV"
+
+      - name: Start the production server
+        run: |
+          mkdir -p "$LH_REPORTS"
+          pnpm --filter web start >"$LH_REPORTS/server.log" 2>&1 &
+          for _ in $(seq 1 60); do
+            if curl -fsS -o /dev/null "$BASE_URL/"; then exit 0; fi
+            sleep 1
+          done
+          echo "the production server never answered on port 3000"
+          cat "$LH_REPORTS/server.log"
+          exit 1
+
+      - name: Point Lighthouse at the Chromium Playwright already installs
+        run: |
+          pnpm --filter web exec playwright install chromium --with-deps
+          CHROME=$(pnpm --filter web exec node -e "console.log(require('@playwright/test').chromium.executablePath())")
+          test -x "$CHROME"
+          echo "CHROME_PATH=$CHROME" >>"$GITHUB_ENV"
+
+      - name: Install Lighthouse (pinned, no lifecycle scripts, nothing added to the lockfile)
+        run: |
+          # The only third-party code this job runs. Pinned to one version, install scripts switched
+          # off, and placed outside the repository so `pnpm install --frozen-lockfile` above stays the
+          # authority on what the app depends on. npm verifies the tarball against the integrity hash
+          # in the registry metadata while installing it.
+          npm install --no-save --ignore-scripts --no-audit --no-fund \
+            --prefix "$LH_PREFIX" "lighthouse@$LH_VERSION"
+          INSTALLED=$(node -e "console.log(require(process.env.LH_PREFIX + '/node_modules/lighthouse/package.json').version)")
+          test "$INSTALLED" = "$LH_VERSION"
+
+      - name: Budget gate - the public pages must hold 90 on mobile
+        run: |
+          node scripts/lighthouse-budget.mjs \
+            --run \
+            --base-url "$BASE_URL" \
+            --reports-dir "$LH_REPORTS" \
+            --lighthouse-cli "$LH_PREFIX/node_modules/lighthouse/cli/index.js" \
+            --database-url "$DATABASE_URL"
+
+      - name: Upload the Lighthouse reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: lighthouse-reports
+          path: ${{ runner.temp }}/lighthouse-reports
+          if-no-files-found: error
+          retention-days: 14
