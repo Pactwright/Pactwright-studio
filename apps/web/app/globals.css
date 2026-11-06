@@ -329,8 +329,10 @@ code,
   filter: drop-shadow(0 0 14px rgba(45, 212, 191, 0.35)) drop-shadow(0 8px 16px rgba(0, 0, 0, 0.5));
 }
 
-.seal svg {
+.seal svg,
+.seal img {
   display: block;
+  border-radius: 50%;
 }
 
 /* Iridescence laid over the foil, masked to the seal's disc. */

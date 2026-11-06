@@ -100,19 +100,6 @@ How a receipt becomes provable, the trust model, and the anchoring and dashboard
 | Pollar Studio storefront template | ✅ Template | `templates/pollar-studio`, built with the public Pollar SDK only |
 | Hosted deployment | ✅ Testnet | [pactwright-studio.vercel.app](https://pactwright-studio.vercel.app) on Vercel. The [`studio-cron`](.github/workflows/studio-cron.yml) workflow drives syncs and hourly anchoring; the syncs that actually arrive are measured at 8.3 a day, not every 5 minutes ([Deploy](#deploy)) |
 
-## ⚙️ Supported Versions & Compatibility
-
-Testnet only, pre-1.0. What "supported" means here is in [docs/OVERVIEW.md](docs/OVERVIEW.md#what-supported-means-here).
-
-### Compatibility matrix
-
-| Target | Status | Notes |
-|---|---|---|
-| **Node 24, pnpm 10.34.7** | **Supported** | The exact pair CI installs and tests with |
-| **Older Node / pnpm** | **Untested** | `engines` requires Node ≥24; the lockfile is pnpm 10 |
-| **Stellar testnet** | **Supported** | Live: indexing, anchoring, certificate verification |
-| **Stellar pubnet** | **Not implemented** | Startup refuses the plaintext anchorer key on pubnet; `ANCHORER_SECRET_REF` (KMS) is not supported yet |
-
 ## 🚀 Quick Start
 
 ### 1. Installation
@@ -247,23 +234,7 @@ The five signals, each with the unit its `value` is in, the threshold it uses wh
 
 **The 503 rule: a probe that cannot be measured is an alert, never a pass.** Every signal comes from its own source — the RPC's `getHealth` for lag and retention, `count(*) FROM receipts WHERE batch_id IS NULL` for the backlog, the sponsor account's own ledger entry for its balance, `GET <VERIFIER_URL>/health` for the verifier's counters, and the anchorer's post-anchor `ReceiptAnchor.verify_receipt` call for the sampled check. When one of those is unreachable, `evaluateSystemHealth` does not drop the signal and answer 200 with what it did get; it adds a probe with `ok: false`, `configSource: "unmeasured"`, no `value`, and an alert that names the reason it failed (`CRITICAL: verifier_error_rate could not be measured (VERIFIER_URL is not set); its threshold was not checked.`), which makes the whole report unhealthy and the response 503. A deployment that cannot be configured at all — where nothing at all could be measured — answers 503 with `probes: []` and one CRITICAL alert rather than an empty all-clear. `anchor_verification` is the exception worth knowing: it is only listed when a post-anchor failure has actually been recorded, so a healthy deployment reports four probes, not five.
 
-## 📊 Testnet pacts
-
-Every MVP scenario ran as real testnet transactions on 2026-10-29 ([Pactwright-Kit testnet e2e](https://github.com/Pactwright/Pactwright-Kit/tree/main/e2e/testnet)). The escrow (M2) pacts are on the `pact` contract, so Studio indexes them; exact-refund (M0) purchases are direct payments, not on-chain pacts, so they don't appear yet.
-
-| Scenario | Outcome | Transactions |
-|---|---|---|
-| M0 ALLOW | ALLOW, seller keeps 1 | [`e1105f24…`](https://stellar.expert/explorer/testnet/tx/e1105f24d40640eb66a73968c06ae4eedc9f860097a086b0f4450c25995c6600) |
-| M0 DENY | DENY, 1 refunded | [`ae9975c0…`](https://stellar.expert/explorer/testnet/tx/ae9975c028fe6d6bb2159cf4b532cebf42dc6ff8de095adedbac29b52542b8a3) · [`2b78feb8…`](https://stellar.expert/explorer/testnet/tx/2b78feb8459b4731aa50bae1a290e3fd84a9a2b4956f5c6d2b7ae4f615bfae59) |
-| M0 non-delivery | DENY, 0.5 refunded | [`df8af0bd…`](https://stellar.expert/explorer/testnet/tx/df8af0bd9c8f4be9477589d9991ab063134b0e9f92094a90218f5edc9a629005) · [`01357475…`](https://stellar.expert/explorer/testnet/tx/013574756ece7ae81643893f00fb14a2b220d54d096d936ea083a45129189b00) |
-| M2 ALLOW | ALLOW 0.75 of 1, settled | [`0b08b71e…`](https://stellar.expert/explorer/testnet/tx/0b08b71e164252de154d6500b3b8c23c0d68f6a8a1710b87b86e79bbe1166f6c) · [`84a6549a…`](https://stellar.expert/explorer/testnet/tx/84a6549aaa6b61b0e8040d1b43f2819914dc0e40f52d85be871f455d0d5a3e71) · [`9fda6bea…`](https://stellar.expert/explorer/testnet/tx/9fda6beadb02f863f74e220820642a4509f269c31e3462fccf6318e1e2fa11c5) |
-| M2 DENY | DENY, full refund | [`b953ee00…`](https://stellar.expert/explorer/testnet/tx/b953ee00524d5b0a9b53308ab1e370a2008fb82b7f5a949ac1934d2aa12d17a7) · [`324f630d…`](https://stellar.expert/explorer/testnet/tx/324f630d39eb88fa76a60b92617e5867421e9819c290a8f3d71ec4bd8bec9138) · [`272703bf…`](https://stellar.expert/explorer/testnet/tx/272703bfbe0a74becf50a80b5d16600396a17440a82c9b3af5c481d4748c22cf) |
-| M2 silence | no verdict, refunded by silence policy | [`76df8318…`](https://stellar.expert/explorer/testnet/tx/76df83188eb7cf22c0b6c639fc0a090615ca3040ecfb6a3e43d6347cece27d59) · [`e62aff4d…`](https://stellar.expert/explorer/testnet/tx/e62aff4d291eff2b76ba282aae987d82c6ca91e1681e7944d96abb1f3739f833) |
-| Dispute refund | dispute-1: 2 of 4 pages, 0.5 refunded | [`a191a000…`](https://stellar.expert/explorer/testnet/tx/a191a000f7920f2fff9839bbccceeeca35c82fce29a5e46510fd3db1bcdf2ff0) |
-
-What is next, from [`ROADMAP.md`](ROADMAP.md): real data for the seller and agent-budget pages (registration and sign-in), indexing exact-refund purchases, and holding the anchorer key in a KMS before any mainnet deployment.
-
-## 🤝 Community & Maintainers
+## 🤝 Community
 
 Join the discussion and get support:
 
@@ -272,11 +243,6 @@ Join the discussion and get support:
 - Documentation hub: [pactwright.github.io/docs](https://pactwright.github.io/docs/)
 - The other repositories: [Contracts](https://github.com/Pactwright/Pactwright-contracts) · [Kit](https://github.com/Pactwright/Pactwright-Kit)
 - Security reports: see [`SECURITY.md`](SECURITY.md) — privately, never a public issue.
-
-| Maintainer | Role | Scope |
-|---|---|---|
-| Allison ([@mallison031](https://github.com/mallison031)) | Lead maintainer; reach out on [Telegram](https://t.me/Pactwright) or [Discord](https://discord.gg/4WFU6fwPe) | Everything |
-| Pactwright core team | Core review | Indexer, anchorer, web app and schema |
 
 ## 🛠️ Contributing
 
