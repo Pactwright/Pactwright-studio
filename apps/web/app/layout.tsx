@@ -16,8 +16,10 @@ export const metadata = {
   title: "Pactwright Studio",
   description: "The public record of purchases made by AI agents on Stellar.",
   icons: {
+    // `/favicon.svg` is left out on purpose: it wraps the same 512 px raster the PNG set already
+    // ships (312 KB, byte-identical to `seal.svg`), and a browser that prefers it pays that on
+    // every page before it has shown a pixel of text.
     icon: [
-      { url: "/favicon.svg", type: "image/svg+xml" },
       { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
       { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
     ],

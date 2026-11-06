@@ -6,10 +6,12 @@ export function Seal({ size = 96, pressed = false, label = "Pactwright seal" }: 
       {...(label ? { role: "img", "aria-label": label } : { "aria-hidden": true })}
     >
       <img
-        src="/pactwright-mark.png"
+        src="/pactwright-mark-256.png"
         alt={label || ""}
         width={size}
         height={size}
+        fetchPriority="high"
+        decoding="async"
         style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", borderRadius: "50%" }}
       />
     </span>
