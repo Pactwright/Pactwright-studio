@@ -17,6 +17,7 @@
  */
 import { spawnSync } from "node:child_process";
 import { get } from "node:http";
+import { cpus, loadavg } from "node:os";
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -116,12 +117,38 @@ export function judgePage(target, reports, budget = BUDGET) {
   return { failures, rows };
 }
 
+/**
+ * The machine that ran the measurements. This belongs in the artifact because the budgeted number
+ * is a function of it: two CI runs of this gate on the same commit, the same 255 kB of chunks and
+ * the same 10 ms document response, recorded `/verify` 96 and 89 — because total blocking time is
+ * main-thread work, and the runner executed that work 1.8 times slower in the second one. A red row
+ * with no host line is a mystery; with it, the row says which machine it came from.
+ */
+export function hostInfo() {
+  const list = cpus();
+  const [load1, load5] = loadavg();
+  return {
+    cpus: list.length,
+    model: list[0] && list[0].model ? list[0].model : null,
+    load1: load1 === undefined ? null : Number(load1.toFixed(2)),
+    load5: load5 === undefined ? null : Number(load5.toFixed(2)),
+    node: process.version,
+  };
+}
+
+/** One line of the summary, or the honest statement that no host was measured. */
+function hostLine(host) {
+  if (!host) return "Host: not measured — this run judged reports written by an earlier run.";
+  return `Host: ${host.cpus} CPUs (${host.model ?? "model unreadable"}), node ${host.node}, load 1/5 min ${host.load1}/${host.load5}.`;
+}
+
 /** Markdown for the artifact: what was measured, on which URL, and what each sample scored. */
-export function renderSummary(rows, urls, when) {
+export function renderSummary(rows, urls, when, host) {
   const head = [
     `# Lighthouse budget — ${when}`,
     "",
     `Budget: ${Object.entries(BUDGET).map(([c, f]) => `${c} >= ${f}`).join(", ")} · mobile · median of ${SAMPLES} samples.`,
+    hostLine(host),
     "",
     "| Page | URL | Category | Samples | Median | Budget | Verdict |",
     "|---|---|---|---|---|---|---|",
@@ -273,8 +300,10 @@ export async function main(argv) {
   const opts = parseArgs(argv);
   const dir = resolve(opts.reportsDir);
   mkdirSync(dir, { recursive: true });
+  let host = null;
 
   if (opts.mode === "run") {
+    host = hostInfo();
     if (!opts.lighthouseCli) throw new Error("pass --lighthouse-cli (or set LIGHTHOUSE_CLI) to run measurements");
     if (!opts.chromePath) throw new Error("pass --chrome-path (or set CHROME_PATH) to run measurements");
     let pactId = opts.pactId;
@@ -314,9 +343,9 @@ export async function main(argv) {
     failures.push(...judged.failures);
   }
 
-  const summary = renderSummary(rows, urls, new Date().toISOString());
+  const summary = renderSummary(rows, urls, new Date().toISOString(), host);
   writeFileSync(resolve(dir, "summary.md"), summary);
-  writeFileSync(resolve(dir, "summary.json"), JSON.stringify({ rows, failures }, null, 2) + "\n");
+  writeFileSync(resolve(dir, "summary.json"), JSON.stringify({ rows, failures, host }, null, 2) + "\n");
   process.stdout.write(summary);
 
   if (failures.length) {

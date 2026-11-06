@@ -13,7 +13,7 @@ import { promisify } from "node:util";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { cpus, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 
@@ -179,11 +179,19 @@ describe("#89 the budget gate judges what it is given", () => {
     const { dir, code } = evaluate(pages());
     expect(code).toBe(0);
     const md = readFileSync(join(dir, "summary.md"), "utf8");
-    const json = JSON.parse(readFileSync(join(dir, "summary.json"), "utf8")) as { rows: unknown[]; failures: string[] };
+    const json = JSON.parse(readFileSync(join(dir, "summary.json"), "utf8")) as {
+      rows: unknown[];
+      failures: string[];
+      host: unknown;
+    };
     expect(md).toContain("| Page | URL | Category | Samples | Median | Budget | Verdict |");
     expect(md).toContain("median of 3 samples");
     expect(json.rows.length).toBe(12);
     expect(json.failures).toEqual([]);
+    // Judging reports written elsewhere says nothing about the machine that measured them, so the
+    // summary must not claim one.
+    expect(md).toContain("Host: not measured");
+    expect(json.host).toBeNull();
   });
 
   it("writes the failing row into summary.md too, so the artifact explains the red", () => {
@@ -417,6 +425,23 @@ process.exit(${exitCode});
     // The pact page is asked for by the id it was given, not by the template it was written with.
     expect(seen).toContain("/pact/" + "f".repeat(64));
     expect(seen).not.toContain("/pact/{pactId}");
+  });
+
+  it("records the machine the measurements ran on", async () => {
+    const { reports, out } = await runMode({});
+    const md = readFileSync(join(reports, "summary.md"), "utf8");
+    const json = JSON.parse(readFileSync(join(reports, "summary.json"), "utf8")) as {
+      host: { cpus: number; node: string; load1: number | null } | null;
+    };
+    // Median-of-three is stable within one machine, and two CI runs of this gate on one commit still
+    // differed — `/verify` 96 then 89, from byte-identical payloads, because the runner executed the
+    // page's main thread 1.8 times slower. So the artifact names its CPU or a red row cannot be told
+    // apart from a slow page.
+    expect(json.host).not.toBeNull();
+    expect(json.host!.cpus).toBe(cpus().length);
+    expect(json.host!.node).toBe(process.version);
+    expect(out).toContain(`Host: ${cpus().length} CPUs`);
+    expect(out).toMatch(/load 1\/5 min \d+(\.\d+)?\/\d+(\.\d+)?/);
   });
 
   it("fails the run when a page does not answer 200, instead of scoring the error page", async () => {
