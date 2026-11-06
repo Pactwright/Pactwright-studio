@@ -458,16 +458,16 @@ code,
   padding: 0 0 0 calc(var(--rail) * 2 + 4px);
 }
 
-/* The chain itself: a glowing rail linking the blocks. */
+/* The chain itself: a calm, precision 1px hairline track linking the blocks. */
 .chain::before {
   content: "";
   position: absolute;
   left: var(--rail);
-  top: 18px;
-  bottom: 18px;
-  width: 2px;
-  background: linear-gradient(var(--teal), var(--indigo));
-  box-shadow: 0 0 12px rgba(45, 212, 191, 0.5);
+  top: 24px;
+  bottom: 24px;
+  width: 1px;
+  background: var(--hairline-strong);
+  box-shadow: none;
 }
 
 .block {
@@ -480,18 +480,32 @@ code,
   box-shadow: var(--float);
 }
 
-/* Each block's link on the rail. */
+/* Each block's link on the rail: precision circular node centered on the hairline. */
 .block::before {
   content: "";
   position: absolute;
-  left: calc(var(--rail) * -1 - 10px);
-  top: 26px;
-  width: 14px;
-  height: 14px;
-  transform: rotate(45deg);
+  left: calc(var(--rail) * -1 - 9px);
+  top: 25px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  transform: none;
   background: var(--void);
   border: 2px solid var(--teal);
-  box-shadow: 0 0 12px rgba(45, 212, 191, 0.6);
+  box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.12);
+  z-index: 2;
+}
+
+/* Circuit trace connecting the node to the block. */
+.block::after {
+  content: "";
+  position: absolute;
+  left: calc(var(--rail) * -1 + 1px);
+  top: 29px;
+  width: calc(var(--rail) - 1px);
+  height: 1px;
+  background: var(--hairline-strong);
+  pointer-events: none;
 }
 
 .block-head {
@@ -877,6 +891,172 @@ code,
   .ledger .secondary {
     font-size: 0.8125rem;
   }
+}
+
+/* ---------- Interactive Settlement Simulator ---------- */
+
+.sim-stage {
+  border: 1px solid var(--hairline);
+  background: linear-gradient(170deg, rgba(24, 33, 70, 0.55), rgba(7, 11, 23, 0.8));
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: var(--float);
+  margin-top: 20px;
+}
+
+.sim-tabs-bar {
+  display: flex;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--hairline);
+  background: rgba(7, 11, 23, 0.6);
+  padding: 6px 8px;
+  gap: 6px;
+  scrollbar-width: none;
+}
+
+.sim-tabs-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.sim-tab {
+  appearance: none;
+  font-family: var(--text-face);
+  font-size: var(--step--1);
+  font-weight: 500;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 8px 14px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.sim-tab:hover {
+  color: var(--text-strong);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.sim-tab[aria-selected="true"] {
+  color: var(--text-strong);
+  background: rgba(45, 212, 191, 0.1);
+  border-color: rgba(45, 212, 191, 0.35);
+  box-shadow: inset 0 0 12px rgba(45, 212, 191, 0.08);
+}
+
+.sim-body {
+  padding: clamp(20px, 3.5vw, 32px);
+  display: grid;
+  gap: 22px;
+}
+
+.sim-meta-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.sim-id-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.sim-id-text {
+  font-family: var(--mono-face);
+  font-size: 0.875rem;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+  margin: 0;
+}
+
+.sim-pipeline {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  border: 1px solid var(--hairline);
+  background: rgba(7, 11, 23, 0.45);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+
+.sim-pipe-step {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sim-pipe-val {
+  font-family: var(--mono-face);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.sim-balances {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+}
+
+.sim-balance-card {
+  border: 1px solid var(--hairline);
+  background: rgba(13, 20, 40, 0.5);
+  border-radius: 12px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sim-balance-amount {
+  font-family: var(--mono-face);
+  font-size: var(--step-2);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.sim-balance-amount[data-role="seller"] {
+  color: var(--teal);
+  text-shadow: 0 0 16px rgba(45, 212, 191, 0.25);
+}
+
+.sim-balance-amount[data-role="buyer"] {
+  color: var(--ink-rose);
+  text-shadow: 0 0 16px rgba(251, 113, 133, 0.25);
+}
+
+.sim-quote {
+  font-style: italic;
+  font-size: 0.9375rem;
+  color: #b9c1d9;
+  border-left: 2px solid var(--teal);
+  padding: 8px 14px;
+  background: rgba(45, 212, 191, 0.04);
+  border-radius: 0 8px 8px 0;
+  line-height: 1.55;
+}
+
+.sim-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  border-top: 1px solid var(--hairline);
+  padding-top: 16px;
+  font-size: var(--step--1);
+  color: var(--muted);
+}
+
+.sim-footer a {
+  color: #a5b4fc;
+  text-underline-offset: 3px;
+  font-weight: 500;
 }
 
 @media (prefers-reduced-motion: reduce) {
