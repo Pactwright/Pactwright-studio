@@ -72,7 +72,7 @@ jobs:
       - name: Point Lighthouse at the Chromium Playwright already installs
         run: |
           pnpm --filter web exec playwright install chromium --with-deps
-          CHROME=$(pnpm --filter web exec node -e "console.log(require('playwright').chromium.executablePath())")
+          CHROME=$(pnpm --filter web exec node -e "console.log(require('@playwright/test').chromium.executablePath())")
           test -x "$CHROME"
           echo "CHROME_PATH=$CHROME" >>"$GITHUB_ENV"
 

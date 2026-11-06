@@ -294,6 +294,24 @@ describe("#89 the workflow that runs the gate", () => {
     expect(runBlock(/Install Lighthouse/)).toMatch(/test "\$INSTALLED" = "\$LH_VERSION"/);
   });
 
+  it("only requires modules the repository actually declares", () => {
+    // `require('playwright')` is not a dependency here — only `@playwright/test` is, and it re-exports
+    // `chromium`. On the runner that was "Cannot find module 'playwright'" and a red job; a test that
+    // reads the workflow as text could not see it, so the module names get checked against the
+    // package manifests the runner installs from.
+    const declared = new Set<string>();
+    for (const rel of ["../../../../package.json", "../../package.json"]) {
+      const pkg = JSON.parse(readFileSync(resolve(import.meta.dirname, rel), "utf8")) as {
+        dependencies?: Record<string, string>;
+        devDependencies?: Record<string, string>;
+      };
+      for (const name of [...Object.keys(pkg.dependencies ?? {}), ...Object.keys(pkg.devDependencies ?? {})]) declared.add(name);
+    }
+    const required = [...WORKFLOW.matchAll(/require\((?:"|')([^"'()]+)(?:"|')\)/g)].map((m) => m[1]);
+    expect(required.length).toBeGreaterThan(0);
+    for (const name of required) expect(declared.has(name)).toBe(true);
+  });
+
   it("keeps the budget in one place, and the four pages with it", () => {
     const script = readFileSync(SCRIPT, "utf8");
     expect(script).toMatch(/performance: 90, accessibility: 90, "best-practices": 90/);
