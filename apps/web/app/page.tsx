@@ -1,6 +1,7 @@
 import { listRecentPacts } from "@/lib/pacts";
 import { StateBadge } from "@/components/StateBadge";
 import { Seal } from "@/components/Seal";
+import { Simulator } from "@/components/Simulator";
 import { formatUsdc, modeName } from "@/lib/format";
 import type { PactRow } from "@/lib/types";
 
@@ -51,6 +52,15 @@ export default async function Home() {
               Open pact
             </button>
           </form>
+        </section>
+
+        <section aria-labelledby="sim-title" className="doc-section" id="simulator">
+          <h2 id="sim-title">Try the settlement simulator</h2>
+          <p className="prose">
+            Toggle between scenarios to see how Soroban smart contract escrow settles on Stellar in real time—from full
+            delivery to partial completions, hallucinations, and timeouts.
+          </p>
+          <Simulator />
         </section>
 
         <section aria-labelledby="recent-title" className="doc-section">
