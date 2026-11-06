@@ -5,8 +5,10 @@ import { expect, test } from "@playwright/test";
  * GET form. "Works without JavaScript" is only checkable by switching JavaScript off, so the filter tests
  * do exactly that: the browser submits the form itself, and the page answers from the query parameters.
  *
- * The three seeded pacts share one `created_at` (a single transaction), so their order on the page is the
- * `pact_id` tie-break — the same tie-break the cursor carries, which is why the first page has to be stable.
+ * `seed.sql` carries three fixture pacts plus a demo ledger of seventeen, so 20 rows in one 25-row page.
+ * The fixtures are the newest three: they take `created_at` from the insert, and every demo row is stamped
+ * hours earlier. They share their timestamps closely enough that the `pact_id` tie-break decides among
+ * them — the same tie-break the cursor carries, which is why the first page has to be stable.
  */
 const SEEDED = {
   settled: "1111111111111111111111111111111111111111111111111111111111111111",
@@ -21,8 +23,8 @@ test.describe("Pact ledger (studio#74)", () => {
 
     await expect(page.locator("h1")).toContainText("Pact ledger");
     const rows = page.locator("table.ledger tbody tr");
-    await expect(rows).toHaveCount(3);
-    // Identical timestamps, so the ID decides: newest page starts at the highest pact_id.
+    await expect(rows).toHaveCount(20);
+    // The three fixtures are the newest inserts, so within them the ID decides the order.
     await expect(rows.first().locator("a").first()).toHaveAttribute("href", `/pact/${SEEDED.refunded}`);
     await expect(rows.nth(1).locator("a").first()).toHaveAttribute("href", `/pact/${SEEDED.funded}`);
     await expect(rows.nth(2).locator("a").first()).toHaveAttribute("href", `/pact/${SEEDED.settled}`);
@@ -51,7 +53,7 @@ test.describe("Pact ledger (studio#74)", () => {
       // The empty seller field travels too as `seller=`, which the shared parser reads as "no filter".
       await expect(page).toHaveURL(/\/pacts\?state=refunded(&|$)/);
       const rows = page.locator("table.ledger tbody tr");
-      await expect(rows).toHaveCount(1);
+      await expect(rows).toHaveCount(3); // two demo refunds above the fixture one
       await expect(rows.locator("a").first()).toHaveAttribute("href", `/pact/${SEEDED.refunded}`);
       // The filter stays visible so the visitor knows what they are looking at.
       await expect(page.locator("select[name=state]")).toHaveValue("refunded");
@@ -62,7 +64,7 @@ test.describe("Pact ledger (studio#74)", () => {
       await page.goto(`/pacts?seller=${SELLER}`);
 
       const rows = page.locator("table.ledger tbody tr");
-      await expect(rows).toHaveCount(2); // the settled and the refunded pact, both sold to this address
+      await expect(rows).toHaveCount(6); // Pollar's two fixture pacts plus the four the demo ledger sells
       await expect(page.locator("input[name=seller]")).toHaveValue(SELLER);
     });
 
@@ -86,7 +88,7 @@ test.describe("Pact ledger (studio#74)", () => {
       await page.click("a[href='/pacts']");
 
       await expect(page).toHaveURL("/pacts");
-      await expect(page.locator("table.ledger tbody tr")).toHaveCount(3);
+      await expect(page.locator("table.ledger tbody tr")).toHaveCount(20);
     });
   });
 });
