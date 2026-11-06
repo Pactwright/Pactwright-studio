@@ -42,8 +42,9 @@ export default async function VerifyPage({
       <article className="panel panel--feature">
         <h1>Verify Certificate</h1>
         <p className="lede">
-          Every finished pact gets a receipt, and receipts are anchored on-chain in batches. Paste a receipt certificate to
-          check it belongs to its anchored batch. The check runs in your browser; nothing is sent anywhere.
+          Every finished pact gets a receipt, and receipts are anchored on-chain in batches. Paste a receipt certificate, or
+          choose the file it was saved as, to check it belongs to its anchored batch. The check runs in your browser; a
+          chosen file is read here and never uploaded.
         </p>
         <div className="doc-section">
           <CertificateCard initialCertificate={initialCertificate} />
