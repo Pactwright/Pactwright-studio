@@ -148,7 +148,7 @@ export function Simulator() {
         <div className="sim-meta-header">
           <div className="sim-id-block">
             <span className="field-label">Simulated Pact ID</span>
-            <p className="sim-id-text">{SAMPLE_PACT_ID}</p>
+            <p><code className="sim-id-text">{SAMPLE_PACT_ID}</code></p>
           </div>
           <div className="sim-stamp-wrap">
             <span
@@ -179,15 +179,15 @@ export function Simulator() {
         <div className="sim-balances">
           <div className="sim-balance-card">
             <span className="field-label">Paid to Seller</span>
-            <span className="sim-balance-amount" data-role="seller">
+            <code className="sim-balance-amount" data-role="seller">
               {s.seller}
-            </span>
+            </code>
           </div>
           <div className="sim-balance-card">
             <span className="field-label">Refunded to Buyer</span>
-            <span className="sim-balance-amount" data-role="buyer">
+            <code className="sim-balance-amount" data-role="buyer">
               {s.buyer}
-            </span>
+            </code>
           </div>
         </div>
 
@@ -201,7 +201,7 @@ export function Simulator() {
         </details>
 
         <div className="sim-footer">
-          <span className="mono">{s.hashMeta}</span>
+          <code className="mono">{s.hashMeta}</code>
           <a href={`/pact/${SAMPLE_PACT_ID}`}>Inspect sample pact in Explorer &rarr;</a>
         </div>
       </div>

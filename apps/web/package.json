@@ -8,6 +8,7 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "check-brand": "node scripts/check-brand.mjs",
     "e2e": "playwright test",
     "db:migrate": "node ../../migrations/migrate.mjs",
     "db:seed": "node ../../migrations/seed.mjs",
@@ -15,6 +16,7 @@
   },
   "dependencies": {
     "@stellar/stellar-sdk": "^16.4.1",
+    "lottie-web": "5.13.0",
     "next": "^16.0.0",
     "pg": "^8.16.0",
     "react": "^19.2.0",

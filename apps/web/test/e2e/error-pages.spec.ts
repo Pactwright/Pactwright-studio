@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 /**
  * #93: the two pages a visitor reaches when something went wrong. The unit test reads the element tree;
@@ -15,6 +15,12 @@ const WAYS_FORWARD = [
   { href: "/verify", name: "Verify a certificate" },
 ];
 
+// At phone width the header links live behind the menu button, so a test that reads them has to open it.
+async function openNavMenu(page: Page) {
+  const toggle = page.getByRole("button", { name: "Open navigation menu" });
+  if (await toggle.isVisible()) await toggle.click();
+}
+
 test.describe("Failure pages (studio#93)", () => {
   test("an unknown address offers every way forward, and none of them is a dead link", async ({ page }) => {
     await page.goto("/this-page-does-not-exist");
@@ -28,9 +34,11 @@ test.describe("Failure pages (studio#93)", () => {
       await expect(link).toBeVisible();
       await expect(link).toHaveAttribute("href", href);
     }
-    // The header offers no way to the ledger, so the panel has to.
-    await expect(page.getByRole("navigation", { name: "Studio" }).getByRole("link", { name: "Pacts" }))
-      .toHaveAttribute("href", "/");
+    // The header carries the ledger under its own name, and the panel repeats the way forward for a
+    // visitor on a phone, where the header is folded into a menu.
+    await openNavMenu(page);
+    await expect(page.getByRole("navigation", { name: "Studio" }).getByRole("link", { name: "Ledger" }))
+      .toHaveAttribute("href", "/pacts");
   });
 
   test("a malformed pact ID lands on the same page instead of a blank one", async ({ page }) => {
@@ -42,7 +50,7 @@ test.describe("Failure pages (studio#93)", () => {
 
   test("following the ledger link out of the dead end loads the ledger", async ({ page }) => {
     await page.goto("/this-page-does-not-exist");
-    await page.click("a[href='/pacts']");
+    await page.getByRole("navigation", { name: "Other views" }).getByRole("link", { name: "Browse the ledger" }).click();
 
     await expect(page).toHaveURL("/pacts");
     await expect(page.locator("table.ledger tbody tr").first()).toBeVisible();

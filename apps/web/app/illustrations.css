@@ -1,0 +1,117 @@
+/*
+ * Pactwright Studio — hand-drawn ledger illustrations.
+ *
+ * Six line drawings explain the product: a pact sealed, its two deadlines, the
+ * split at settlement, a delivery receipt, the process rail, and an agent
+ * handing money into escrow. They are drawn in JSX, so every colour here and in
+ * the components is a `:root` token — no hex, no gradients, no blue or violet.
+ *
+ * Motion is two moves, and only two:
+ *   .illu-draw  — the pen stroke, drawn in with a dash offset
+ *   .illu-pop   — a stamp, scaled in after the stroke
+ *
+ * The stroke trick: every animatable path carries `pathLength="1"`, which
+ * renormalises its length to 1, so `stroke-dasharray: 1` is one full dash for a
+ * 20 px line and for a 400 px line alike. That is why no path needs a measured
+ * dash length in the JSX.
+ *
+ * Reveal is driven by the existing scroll observer (components/ScrollReveal.tsx):
+ * it puts `js-ready` on <html> and `is-visible` on each `.scroll-reveal` section.
+ * An illustration that is not inside a `.scroll-reveal` is never hidden, so it
+ * renders finished even without JavaScript.
+ */
+
+.illu {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+/* ---------------------------------------------------------------- pen stroke */
+
+.illu .illu-draw {
+  stroke-dasharray: 1;
+  transition: stroke 0.2s ease;
+}
+
+/* Hide the stroke only while its reveal container is still off screen. */
+html.js-ready .scroll-reveal .illu-draw {
+  stroke-dashoffset: 1;
+}
+
+html.js-ready .scroll-reveal.is-visible .illu-draw {
+  animation: illu-draw 1.1s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  /* `--i` is set inline by each component: 0, 1, 2 … so strokes stagger. */
+  animation-delay: calc(var(--i, 0) * 140ms);
+}
+
+/* ------------------------------------------------------------------- stamps */
+
+.illu-pop {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+html.js-ready .scroll-reveal .illu-pop {
+  opacity: 0;
+  transform: scale(0.86);
+}
+
+html.js-ready .scroll-reveal.is-visible .illu-pop {
+  animation: illu-pop 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  /* A stamp waits for the stroke it sits on to be drawn first. */
+  animation-delay: calc(420ms + var(--i, 0) * 140ms);
+}
+
+@keyframes illu-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes illu-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.86);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ---------------------------------------------------------------- hover state */
+
+/* Ink warms to vermilion under the pointer. Colour only: nothing moves, nothing
+   reflows, nothing glows. Semantic strokes (moss, rust, brass) warm too, by
+   design — the hover treatment is the illustration's, not the state's. */
+.illu:hover .illu-draw {
+  stroke: var(--accent);
+}
+
+/* ------------------------------------------------------------- reduced motion */
+
+/* No drawing, no stamping, and no half-finished frame: every moving part is
+   pinned to the state the animation would have ended in. */
+@media (prefers-reduced-motion: reduce) {
+  .illu .illu-draw,
+  html.js-ready .scroll-reveal .illu-draw,
+  html.js-ready .scroll-reveal.is-visible .illu-draw {
+    animation: none;
+    stroke-dasharray: 1;
+    stroke-dashoffset: 0;
+    transition: none;
+  }
+
+  .illu .illu-pop,
+  html.js-ready .scroll-reveal .illu-pop,
+  html.js-ready .scroll-reveal.is-visible .illu-pop {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
