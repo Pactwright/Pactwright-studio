@@ -28,7 +28,7 @@ export default async function MerchantDashboardPage({
 
   return (
     <main className="shell">
-      <article className="panel panel--feature">
+      <article className="panel panel--head">
         <span className="field-label">Merchant Dashboard</span>
         <h1>{seller.name}</h1>
         <p className="prose">

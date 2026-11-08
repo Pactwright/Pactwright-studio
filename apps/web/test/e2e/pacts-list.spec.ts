@@ -85,7 +85,9 @@ test.describe("Pact ledger (studio#74)", () => {
 
     test("reaches a pact from the home page without typing an ID", async ({ page }) => {
       await page.goto("/");
-      await page.click("a[href='/pacts']");
+      // The body link, not the header one: with JavaScript off at 390 px the header is a menu that cannot
+      // open, so only a link in the page itself proves the ledger is one click away for everyone.
+      await page.getByRole("link", { name: "Browse the whole ledger" }).click();
 
       await expect(page).toHaveURL("/pacts");
       await expect(page.locator("table.ledger tbody tr")).toHaveCount(20);

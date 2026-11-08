@@ -4,6 +4,7 @@ import { Seal } from "@/components/Seal";
 import { SiteNav } from "@/components/SiteNav";
 import { getNetwork } from "@/lib/explorer";
 import "./globals.css";
+import "./illustrations.css";
 
 // Headings and the brand: wide and rounded.
 const display = Unbounded({ subsets: ["latin"], weight: ["500", "600", "700"], variable: "--font-display" });

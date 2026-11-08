@@ -24,7 +24,7 @@ export default async function PactsPage({ searchParams }: { searchParams: Promis
 
   return (
     <main className="shell">
-      <article className="panel panel--feature">
+      <article className="panel panel--head">
         <h1>Pact ledger</h1>
         <p className="prose">
           Every pact Studio has indexed, newest first. Open one to see where the money went, step by step.

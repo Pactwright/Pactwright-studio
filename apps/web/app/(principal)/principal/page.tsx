@@ -30,7 +30,7 @@ export default async function PrincipalViewPage({
 
   return (
     <main className="shell">
-      <article className="panel panel--feature">
+      <article className="panel panel--head">
         <span className="field-label">Principal View</span>
         <h1 className="id-heading">{principal}</h1>
         <p className="prose">The account that funds these agents, with each agent&apos;s budget and the pacts open right now.</p>

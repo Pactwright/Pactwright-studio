@@ -37,7 +37,8 @@ const AUDITS: Audit[] = [
     label: "home",
     path: "/",
     expect: async (page) => {
-      await expect(page.locator("h1")).toContainText("Pactwright Studio");
+      await expect(page.locator("h1")).toContainText("Purchases, on the record.");
+      await expect(page.getByRole("heading", { name: "Three ways in" })).toBeVisible();
     },
   },
   {
@@ -94,6 +95,43 @@ const AUDITS: Audit[] = [
 /** The two impacts the issue names. `moderate`, `minor` and unknown are reported but do not fail the run. */
 const FAILING = new Set(["critical", "serious"]);
 
+/**
+ * Reveals and stamps fade in as the page arrives, and axe multiplies an element's colour by its
+ * opacity, so an audit taken during a fade reports the transition as a contrast failure on every word
+ * in it. Scrolling once through the page arms every reveal, then the two waits below hold until the
+ * page is at rest: the resting state is what the gate is about. An ambient animation that repeats
+ * forever is not a transition and does not hold the run.
+ */
+async function settleReveals(page: Page) {
+  await page.evaluate(async () => {
+    // The page scrolls smoothly, so every step of this tour would be interrupted by the next one.
+    document.documentElement.style.scrollBehavior = "auto";
+    const bottom = document.documentElement.scrollHeight;
+    for (let y = 0; y < bottom; y += Math.floor(window.innerHeight / 2)) {
+      window.scrollTo(0, y);
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    window.scrollTo(0, 0);
+  });
+  await page.waitForFunction(
+    () =>
+      document.getAnimations().every((animation) => {
+        const timing = (animation.effect as KeyframeEffect | null)?.getComputedTiming();
+        return animation.playState !== "running" || !Number.isFinite(timing?.iterations ?? 1);
+      }),
+    undefined,
+    { timeout: 20_000 },
+  );
+  await page.waitForFunction(
+    () =>
+      Array.from(document.querySelectorAll(".scroll-reveal, .scroll-reveal > *")).every(
+        (el) => Number(getComputedStyle(el).opacity) >= 0.99,
+      ),
+    undefined,
+    { timeout: 20_000 },
+  );
+}
+
 /** `axe-core` is @axe-core/playwright's own dependency, not this app's, so the type is read off its result. */
 type Violation = Awaited<ReturnType<AxeBuilder["analyze"]>>["violations"][number];
 
@@ -118,11 +156,10 @@ function failingIds(violations: Violation[]) {
  * - and a test below refuses an entry whose page no longer exists, so a typo cannot create an inert one.
  */
 const KNOWN: Record<string, string[]> = {
-  // `app/(merchant)/merchant/page.tsx` (the seller dashboard #78 is working) puts the routes table inside
-  // `.ledger-wrap`, which is scrollable at 390 px and contains nothing focusable, so a keyboard reader
-  // cannot reach the columns that overflow. Every other `.ledger-wrap` passes because its table holds
-  // links. Desktop is wide enough that the wrapper never scrolls and the rule does not apply.
-  "mobile-chrome:merchant": ["scrollable-region-focusable"],
+  // Empty as of the UI redesign: the last entry was `mobile-chrome:merchant`'s
+  // `scrollable-region-focusable`, and the ledger table rules now fit 390 px, so that wrapper no longer
+  // scrolls at all (measured: scrollWidth 302 of clientWidth 302). Anything added here needs the same
+  // kind of evidence — the rule, the page, the viewport, and why the page cannot fix it.
 };
 
 test.beforeAll(() => {
@@ -133,6 +170,7 @@ for (const audit of AUDITS) {
   test(`${audit.label} has no serious or critical axe violations`, async ({ page }) => {
     await page.goto(audit.path);
     await audit.expect(page);
+    await settleReveals(page);
 
     const results = await new AxeBuilder({ page }).analyze();
 
