@@ -15,7 +15,7 @@
     "live:testnet": "vitest run --config vitest.live.config.ts"
   },
   "dependencies": {
-    "@stellar/stellar-sdk": "^16.4.1",
+    "@stellar/stellar-sdk": "^17.4.0",
     "lottie-web": "5.13.0",
     "next": "^16.0.0",
     "pg": "^8.16.0",
