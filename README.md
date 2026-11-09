@@ -1,8 +1,5 @@
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="brand/pactwright-logo-dark.svg">
-    <img alt="Pactwright" src="brand/pactwright-logo-light.svg" width="460">
-  </picture>
+  <img src="brand/pactwright-mark.png" alt="Pactwright" width="128">
 </p>
 
 <p align="center">
